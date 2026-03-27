@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>DigitalMind v19</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#05101e;--border:rgba(255,255,255,0.07);--border-h:rgba(255,255,255,0.14);
+  --text:#f0f6ff;--muted:#8fa8c4;--primary:#4b8cff;--primary-2:#2f6ef2;
+  --success:#22c55e;--warning:#f59e0b;--danger:#ef4444;
+  --c-diag:#4b8cff;--c-diag-bg:rgba(75,140,255,.10);
+  --c-mkt:#a855f7;--c-mkt-bg:rgba(168,85,247,.10);
+  --c-vnd:#22c55e;--c-vnd-bg:rgba(34,197,94,.10);
+  --c-fin:#f59e0b;--c-fin-bg:rgba(245,158,11,.10);
+  --c-evo:#06b6d4;--c-evo-bg:rgba(6,182,212,.10);
+  --sh:0 20px 60px rgba(0,0,0,.32);--tr:.22s cubic-bezier(.4,0,.2,1);--sw:230px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:Inter,system-ui,sans-serif;color:var(--text);
+  background:radial-gradient(ellipse at 15% 15%,rgba(75,140,255,.14) 0%,transparent 40%),
+  radial-gradient(ellipse at 85% 85%,rgba(73,90,255,.12) 0%,transparent 40%),
+  linear-gradient(150deg,#030c1a 0%,#060f20 50%,#0a1628 100%);min-height:100vh;}
+
+/* ── TOASTS ── */
+#toastRoot{position:fixed;top:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;}
+.toast{min-width:250px;max-width:340px;display:flex;align-items:flex-start;gap:10px;padding:13px 15px;border-radius:16px;background:rgba(6,16,38,.98);border:1px solid var(--border);box-shadow:var(--sh);backdrop-filter:blur(20px);animation:tIn .3s ease both;pointer-events:auto;}
+.toast.out{animation:tOut .28s ease forwards;}
+.toast-msg{font-size:.88rem;line-height:1.5;color:var(--muted);}
+.toast-msg strong{color:var(--text);display:block;margin-bottom:2px;}
+.toast.success{border-color:rgba(34,197,94,.22);}.toast.error{border-color:rgba(239,68,68,.22);}.toast.info{border-color:rgba(75,140,255,.22);}
+@keyframes tIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+@keyframes tOut{to{opacity:0;transform:translateX(16px)}}
+
+/* ── MODAL OVERLAY ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;animation:fadeIn .2s ease both;}
+.modal{background:linear-gradient(180deg,rgba(8,20,46,.98),rgba(6,16,38,.96));border:1px solid var(--border);border-radius:26px;padding:28px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;position:relative;animation:slideUp .25s ease both;}
+.modal-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);border-radius:10px;width:32px;height:32px;cursor:pointer;font-size:1rem;display:grid;place-items:center;}
+.modal-close:hover{color:var(--text);}
+.modal h2{font-size:1.2rem;margin-bottom:6px;letter-spacing:-.02em;}
+.modal .modal-sub{font-size:.88rem;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;background:rgba(5,16,30,.9);border-bottom:1px solid var(--border);backdrop-filter:blur(18px);position:sticky;top:0;z-index:40;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),var(--primary-2));font-weight:900;font-size:.82rem;box-shadow:0 4px 14px rgba(75,140,255,.3);}
+.brand-title{font-size:.98rem;font-weight:800;line-height:1.1;}
+.brand-sub{font-size:.8rem;color:var(--muted);margin-top:2px;}
+.topnav{display:flex;align-items:center;gap:8px;}
+.topnav-btn{border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);border-radius:13px;padding:9px 15px;font-size:.86rem;font-weight:700;cursor:pointer;transition:var(--tr);font-family:inherit;}
+.topnav-btn:hover{color:var(--text);border-color:var(--border-h);}
+.topnav-btn.active{background:linear-gradient(135deg,var(--primary),var(--primary-2));border-color:transparent;color:#fff;}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:rgba(143,168,196,.3);display:inline-block;margin-right:5px;transition:var(--tr);}
+.conn-dot.ok{background:var(--success);box-shadow:0 0 6px var(--success);}
+
+/* ── PAGES ── */
+.page{display:none;}.page.active{display:block;animation:fadeUp .3s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.shell{max-width:1280px;margin:0 auto;padding:26px 16px;}
+.section{background:linear-gradient(180deg,rgba(8,20,46,.92),rgba(6,16,38,.88));border:1px solid var(--border);border-radius:28px;box-shadow:var(--sh);}
+
+/* ── HERO ── */
+.hero-wrap{padding:48px 44px;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center;}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;background:var(--c-diag-bg);border:1px solid rgba(75,140,255,.2);color:#bdd5ff;font-size:.82rem;font-weight:700;margin-bottom:20px;}
+.eyebrow::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--primary);}
+h1{font-size:clamp(2.2rem,4vw,3.6rem);line-height:.94;letter-spacing:-.05em;margin-bottom:16px;max-width:14ch;}
+h1 em{font-style:normal;color:var(--primary);}
+.hero-sub{color:var(--muted);font-size:.98rem;line-height:1.7;max-width:46ch;margin-bottom:26px;}
+.hero-ctas{display:flex;gap:10px;flex-wrap:wrap;}
+.hero-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.hero-kpi{padding:16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--border);text-align:center;}
+.hero-kpi-val{font-size:1.5rem;font-weight:900;}
+.hero-kpi-lbl{font-size:.76rem;color:var(--muted);margin-top:4px;}
+.hero-tag{padding:13px 16px;border-radius:16px;background:rgba(75,140,255,.05);border:1px solid rgba(75,140,255,.12);display:flex;align-items:center;gap:11px;margin-top:9px;}
+.hero-tag-dot{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;background:var(--c-diag-bg);border:1px solid rgba(75,140,255,.2);}
+.hero-tag-text{font-size:.88rem;color:var(--muted);line-height:1.45;}
+.hero-tag-text strong{color:var(--text);display:block;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:14px;padding:12px 18px;font-size:.9rem;font-weight:700;cursor:pointer;color:white;text-decoration:none;transition:var(--tr);white-space:nowrap;font-family:inherit;}
+.btn:hover{transform:translateY(-1px);}.btn:active{transform:none;}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-2));box-shadow:0 4px 16px rgba(75,140,255,.26);}
+.btn-secondary{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{color:var(--text);border-color:var(--border-h);}
+.btn-sm{padding:8px 13px;font-size:.82rem;border-radius:11px;}
+.btn-success{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;}
+.btn-xs{padding:5px 9px;font-size:.75rem;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;transition:var(--tr);font-family:inherit;}
+.btn-xs:hover{color:var(--text);}
+.btn-danger-xs{padding:5px 9px;font-size:.75rem;border-radius:8px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.07);color:var(--danger);cursor:pointer;transition:var(--tr);font-family:inherit;}
+.btn-danger-xs:hover{background:rgba(239,68,68,.15);}
+
+/* ── FORM ── */
+.form-wrap{padding:34px;}
+.step-dots{display:flex;gap:7px;align-items:center;margin-bottom:26px;}
+.step-dot{width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.12);transition:var(--tr);}
+.step-dot.done{background:var(--primary);opacity:.5;}.step-dot.active{background:var(--primary);width:26px;}.step-dot.future{background:rgba(255,255,255,.1);}
+.prog-row{display:flex;align-items:center;gap:14px;margin-bottom:5px;}
+.prog-label{font-size:.8rem;font-weight:700;color:var(--muted);white-space:nowrap;}
+.prog-track{flex:1;height:3px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;}
+.prog-bar{height:100%;background:linear-gradient(90deg,var(--primary),#7bb3ff);border-radius:999px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+.step-tag{display:inline-flex;align-items:center;padding:6px 11px;border-radius:999px;background:var(--c-diag-bg);border:1px solid rgba(75,140,255,.18);color:#bdd5ff;font-size:.78rem;font-weight:700;margin-bottom:10px;}
+.step-title{font-size:clamp(1.5rem,2.5vw,2rem);line-height:1.1;letter-spacing:-.03em;margin-bottom:9px;}
+.step-sub{color:var(--muted);line-height:1.7;max-width:58ch;margin-bottom:22px;font-size:.93rem;}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:13px;}
+.g1{display:grid;grid-template-columns:1fr;gap:13px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-weight:700;font-size:.85rem;color:#c9dcf5;}
+.field input,.field textarea,.field select{width:100%;padding:12px 15px;border-radius:13px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);outline:none;font-size:.92rem;resize:vertical;transition:border-color .18s,box-shadow .18s;font-family:inherit;}
+.field textarea{min-height:95px;}
+.field input::placeholder,.field textarea::placeholder{color:rgba(143,168,196,.45);}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:rgba(75,140,255,.5);box-shadow:0 0 0 3px rgba(75,140,255,.09);}
+.form-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:22px;padding-top:18px;border-top:1px solid rgba(255,255,255,.07);}
+.hint-text{font-size:.82rem;color:var(--muted);}
+.form-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:20px;padding:26px;animation:sIn .28s ease both;}
+@keyframes sIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.card{padding:20px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid var(--border);}
+
+/* ── RESULT ── */
+.result-wrap{padding:30px;}
+.result-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:24px;padding:26px;background:linear-gradient(135deg,rgba(75,140,255,.09),rgba(75,140,255,.03));border:1px solid rgba(75,140,255,.18);border-radius:22px;}
+.result-title{font-size:clamp(1.5rem,2.5vw,2rem);line-height:1.1;letter-spacing:-.03em;max-width:22ch;}
+.rscore{width:76px;height:76px;border-radius:50%;flex-shrink:0;background:conic-gradient(var(--primary) calc(var(--pct,0)*1%),rgba(255,255,255,.08) 0);position:relative;display:grid;place-items:center;}
+.rscore::before{content:'';position:absolute;inset:8px;border-radius:50%;background:#0a1730;}
+.rscore span{position:relative;z-index:1;font-weight:900;font-size:.92rem;}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px;}
+.rcrd{padding:20px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid var(--border);}
+.rcrd h3{font-size:.84rem;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;}
+.rcrd p,.rcrd li{color:var(--text);font-size:.9rem;line-height:1.65;}
+.rcrd ul{padding-left:14px;}.rcrd li{margin-bottom:5px;}.rcrd.full{grid-column:1/-1;}
+.swot-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.swot-q{padding:13px 15px;border-radius:13px;border:1px solid var(--border);}
+.swot-q-lbl{font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;}
+.swot-q-txt{font-size:.86rem;line-height:1.55;color:var(--muted);}
+.swot-q.f{border-color:rgba(34,197,94,.22);background:rgba(34,197,94,.04);}.swot-q.f .swot-q-lbl{color:var(--success);}
+.swot-q.fr{border-color:rgba(239,68,68,.2);background:rgba(239,68,68,.04);}.swot-q.fr .swot-q-lbl{color:var(--danger);}
+.swot-q.o{border-color:rgba(75,140,255,.22);background:rgba(75,140,255,.04);}.swot-q.o .swot-q-lbl{color:var(--primary);}
+.swot-q.a{border-color:rgba(245,158,11,.22);background:rgba(245,158,11,.04);}.swot-q.a .swot-q-lbl{color:var(--warning);}
+.result-cta{margin-top:13px;padding:22px 26px;background:linear-gradient(135deg,rgba(75,140,255,.09),rgba(75,140,255,.03));border:1px solid rgba(75,140,255,.18);border-radius:22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.result-cta h3{font-size:1.3rem;letter-spacing:-.02em;margin-bottom:5px;}
+.result-cta p{color:var(--muted);max-width:50ch;line-height:1.6;font-size:.9rem;}
+
+/* ── AUTH ── */
+.auth-wrap{padding:30px;}
+.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+.auth-pitch{padding:28px;}
+.auth-pitch h2{font-size:clamp(1.7rem,2.5vw,2.3rem);letter-spacing:-.04em;line-height:1.08;margin-bottom:12px;}
+.auth-pitch p{color:var(--muted);line-height:1.7;font-size:.93rem;margin-bottom:20px;}
+.auth-feat{display:flex;align-items:center;gap:11px;margin-bottom:10px;}
+.auth-feat-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.auth-feat-text{font-size:.88rem;color:var(--muted);}
+.auth-tabs{display:flex;gap:7px;margin-bottom:20px;}
+.auth-tab{flex:1;padding:10px;border-radius:13px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);font-weight:700;font-size:.88rem;cursor:pointer;transition:var(--tr);text-align:center;font-family:inherit;}
+.auth-tab.active{background:linear-gradient(135deg,var(--primary),var(--primary-2));border-color:transparent;color:#fff;}
+
+/* ── DASHBOARD ── */
+#page-dashboard{display:none;}
+#page-dashboard.active{display:flex;flex-direction:column;min-height:calc(100vh - 61px);}
+.dash-layout{display:flex;flex:1;min-height:0;}
+.sidebar{width:var(--sw);flex-shrink:0;padding:18px 10px;background:rgba(4,12,26,.65);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:3px;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto;}
+.sl-lbl{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(143,168,196,.35);padding:7px 9px 3px;}
+.sb-btn{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:13px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:.86rem;font-weight:600;text-align:left;width:100%;transition:var(--tr);font-family:inherit;}
+.sb-btn:hover{background:rgba(255,255,255,.05);color:var(--text);}
+.sb-btn.active{background:rgba(255,255,255,.07);color:var(--text);}
+.sb-icon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;font-size:.78rem;font-weight:900;transition:var(--tr);background:rgba(255,255,255,.05);border:1px solid var(--border);}
+.sb-btn.active .sb-icon{background:var(--mod-bg,rgba(75,140,255,.12));border-color:rgba(255,255,255,.1);color:var(--mod-color,var(--primary));}
+.sb-badge{margin-left:auto;font-size:.7rem;font-weight:700;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--muted);}
+.sb-badge.pending{background:var(--c-vnd-bg);color:var(--c-vnd);}
+.sb-divider{height:1px;background:var(--border);margin:7px 0;}
+.sb-bottom{margin-top:auto;padding-top:10px;border-top:1px solid var(--border);}
+.dash-main{flex:1;min-width:0;padding:22px 26px;overflow-y:auto;}
+
+/* ── MODULE ── */
+.module{display:none;animation:fadeUp .25s ease both;}.module.active{display:block;}
+.mod-header{margin-bottom:22px;}
+.mod-header h2{font-size:clamp(1.4rem,2vw,1.9rem);letter-spacing:-.04em;margin-bottom:5px;}
+.mod-header p{color:var(--muted);line-height:1.6;font-size:.9rem;max-width:66ch;}
+.mod-tag{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;font-size:.76rem;font-weight:700;margin-bottom:9px;border:1px solid transparent;}
+.mod-tag.diag{background:var(--c-diag-bg);color:#bdd5ff;border-color:rgba(75,140,255,.2);}
+.mod-tag.mkt{background:var(--c-mkt-bg);color:#d8b4fe;border-color:rgba(168,85,247,.2);}
+.mod-tag.vnd{background:var(--c-vnd-bg);color:#86efac;border-color:rgba(34,197,94,.2);}
+.mod-tag.fin{background:var(--c-fin-bg);color:#fde68a;border-color:rgba(245,158,11,.2);}
+.mod-tag.evo{background:var(--c-evo-bg);color:#a5f3fc;border-color:rgba(6,182,212,.2);}
+
+/* Metric cards – only in diag module */
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:22px;}
+.metric-card{padding:18px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid var(--border);cursor:pointer;transition:var(--tr);}
+.metric-card:hover{border-color:var(--border-h);transform:translateY(-1px);}
+.metric-lbl{font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;}
+.metric-val{font-size:1.9rem;font-weight:900;letter-spacing:-.04em;}
+.metric-note{font-size:.78rem;color:var(--muted);margin-top:3px;}
+.metric-trend{display:inline-flex;align-items:center;gap:3px;font-size:.76rem;font-weight:700;margin-top:5px;}
+.metric-trend.up{color:var(--success);}.metric-trend.neutral{color:var(--warning);}
+
+/* Info grid */
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:16px;}
+.info-card{padding:18px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid var(--border);}
+.info-card h3{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;}
+.info-card p{font-size:.9rem;line-height:1.6;}
+.info-card ul{padding-left:13px;}
+.info-card li{font-size:.88rem;line-height:1.65;color:var(--muted);}
+.info-card.acc-diag{border-color:rgba(75,140,255,.18);background:rgba(75,140,255,.05);}
+.info-card.acc-mkt{border-color:rgba(168,85,247,.18);background:rgba(168,85,247,.04);}
+.info-card.acc-vnd{border-color:rgba(34,197,94,.18);background:rgba(34,197,94,.04);}
+.info-card.acc-evo{border-color:rgba(6,182,212,.18);background:rgba(6,182,212,.04);}
+.info-card.full{grid-column:1/-1;}
+
+/* Priority pills */
+.pill-row{display:flex;gap:8px;flex-wrap:wrap;}
+.pill{padding:7px 12px;border-radius:999px;font-size:.8rem;font-weight:700;background:rgba(255,255,255,.06);border:1px solid var(--border);color:#c9dcf5;cursor:pointer;transition:var(--tr);}
+.pill:hover{border-color:rgba(75,140,255,.35);background:rgba(75,140,255,.1);color:#bdd5ff;}
+.pill.active-pill{border-color:rgba(75,140,255,.45);background:rgba(75,140,255,.12);color:#bdd5ff;}
+.priority-detail{margin-top:14px;padding:18px;border-radius:16px;background:rgba(75,140,255,.06);border:1px solid rgba(75,140,255,.18);animation:sIn .2s ease both;display:none;}
+.priority-detail.show{display:block;}
+.priority-detail h4{font-size:.95rem;margin-bottom:8px;}
+.priority-detail p{font-size:.88rem;color:var(--muted);line-height:1.65;}
+.priority-detail ul{padding-left:14px;margin-top:8px;}
+.priority-detail li{font-size:.86rem;color:var(--muted);line-height:1.7;}
+
+/* Score ring */
+.score-ring{width:120px;height:120px;border-radius:50%;background:conic-gradient(var(--primary) calc(var(--score,0)*1%),rgba(255,255,255,.07) 0);position:relative;display:grid;place-items:center;margin:7px auto 10px;transition:background .8s ease;}
+.score-ring::before{content:'';position:absolute;inset:11px;border-radius:50%;background:#091528;border:1px solid var(--border);}
+.score-ring span{position:relative;z-index:1;font-size:1.45rem;font-weight:900;}
+.empty-state{padding:28px 18px;text-align:center;border-radius:18px;border:1px dashed rgba(255,255,255,.1);background:rgba(255,255,255,.02);}
+.empty-state p{color:var(--muted);font-size:.88rem;}
+.empty-icon{font-size:1.8rem;margin-bottom:8px;opacity:.5;}
+.hidden{display:none!important;}
+.sep{height:1px;background:var(--border);margin:20px 0;}
+
+/* ── CHAT ── */
+.chat-layout{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;}
+.chat-box{min-height:260px;max-height:340px;border-radius:16px;padding:14px;overflow-y:auto;background:rgba(255,255,255,.03);border:1px solid var(--border);display:flex;flex-direction:column;gap:9px;}
+.msg{max-width:86%;padding:11px 14px;border-radius:14px;line-height:1.6;font-size:.86rem;animation:msgIn .2s ease;}
+@keyframes msgIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.msg.ai{background:rgba(75,140,255,.09);border:1px solid rgba(75,140,255,.16);align-self:flex-start;border-bottom-left-radius:3px;}
+.msg.user{background:rgba(255,255,255,.06);border:1px solid var(--border);align-self:flex-end;border-bottom-right-radius:3px;}
+.typing-dots{display:inline-flex;gap:4px;align-items:center;}
+.typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--primary);animation:dot .9s infinite ease-in-out both;}
+.typing-dots span:nth-child(2){animation-delay:.15s;}.typing-dots span:nth-child(3){animation-delay:.3s;}
+@keyframes dot{0%,60%,100%{transform:scale(.8);opacity:.4}30%{transform:scale(1);opacity:1}}
+.chat-input-row{display:flex;gap:9px;margin-top:10px;}
+.chat-input-row input{flex:1;padding:11px 15px;border-radius:13px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.88rem;font-family:inherit;outline:none;transition:border-color .18s;}
+.chat-input-row input:focus{border-color:rgba(75,140,255,.5);}
+.chat-prompts{display:flex;flex-direction:column;gap:7px;}
+.prompt-btn{width:100%;text-align:left;padding:10px 13px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);font-size:.83rem;cursor:pointer;transition:var(--tr);font-family:inherit;}
+.prompt-btn:hover{background:rgba(255,255,255,.07);color:var(--text);border-color:var(--border-h);}
+.status-row{display:flex;align-items:center;gap:7px;padding:10px 14px;border-radius:13px;background:rgba(255,255,255,.03);border:1px solid var(--border);font-size:.84rem;color:var(--muted);}
+
+/* ── VENDAS STEP ── */
+.sales-prog-row{display:flex;align-items:center;gap:13px;margin-bottom:18px;}
+.sales-prog-label{font-size:.8rem;font-weight:700;color:var(--muted);white-space:nowrap;min-width:80px;}
+.sales-prog-track{flex:1;height:3px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;}
+.sales-prog-bar{height:100%;background:linear-gradient(90deg,var(--c-vnd),#86efac);border-radius:999px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+.sales-step-dots{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:18px;}
+.sdot{width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.12);transition:var(--tr);}
+.sdot.done{background:var(--c-vnd);opacity:.6;}.sdot.cur{background:var(--c-vnd);width:20px;}
+.sales-q-card{background:rgba(34,197,94,.04);border:1px solid rgba(34,197,94,.16);border-radius:20px;padding:26px;animation:sIn .28s ease both;}
+.sales-q-lbl{font-size:.76rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-vnd);margin-bottom:9px;}
+.sales-q-title{font-size:1.1rem;font-weight:700;margin-bottom:16px;line-height:1.4;}
+.sales-q-ta{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(34,197,94,.18);border-radius:13px;padding:13px 15px;color:var(--text);font-size:.92rem;resize:vertical;min-height:95px;font-family:inherit;outline:none;transition:border-color .18s,box-shadow .18s;}
+.sales-q-ta:focus{border-color:rgba(34,197,94,.45);box-shadow:0 0 0 3px rgba(34,197,94,.08);}
+.sales-q-ta::placeholder{color:rgba(143,168,196,.4);}
+.sales-nav{display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07);}
+
+/* ── FINANCEIRO ── */
+.fin-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:14px;}
+.fin-tab{padding:8px 14px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);font-size:.83rem;font-weight:700;cursor:pointer;transition:var(--tr);font-family:inherit;}
+.fin-tab:hover{color:var(--text);border-color:var(--border-h);}
+.fin-tab.active{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fde68a;}
+.fin-panel{display:none;animation:fadeUp .22s ease both;}.fin-panel.active{display:block;}
+
+/* Visão Geral */
+.fin-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:20px;}
+.fin-kpi{padding:18px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid var(--border);cursor:pointer;transition:var(--tr);position:relative;overflow:hidden;}
+.fin-kpi:hover{transform:translateY(-2px);}
+.fin-kpi.receita:hover,.fin-kpi.receita.active-kpi{border-color:rgba(34,197,94,.4);box-shadow:0 0 0 3px rgba(34,197,94,.07);}
+.fin-kpi.despesa:hover,.fin-kpi.despesa.active-kpi{border-color:rgba(239,68,68,.38);box-shadow:0 0 0 3px rgba(239,68,68,.06);}
+.fin-kpi.saldo:hover,.fin-kpi.saldo.active-kpi{border-color:rgba(75,140,255,.38);box-shadow:0 0 0 3px rgba(75,140,255,.06);}
+.fin-kpi.dre:hover,.fin-kpi.dre.active-kpi{border-color:rgba(245,158,11,.38);box-shadow:0 0 0 3px rgba(245,158,11,.06);}
+.fki{width:33px;height:33px;border-radius:9px;display:grid;place-items:center;margin-bottom:10px;font-size:.9rem;}
+.fki.green{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);}
+.fki.red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);}
+.fki.blue{background:rgba(75,140,255,.1);border:1px solid rgba(75,140,255,.2);}
+.fki.amber{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);}
+.fk-lbl{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
+.fk-val{font-size:1.5rem;font-weight:900;letter-spacing:-.03em;}
+.fk-val.green{color:var(--success);}.fk-val.red{color:var(--danger);}.fk-val.blue{color:var(--primary);}.fk-val.amber{color:var(--warning);}
+.fk-hint{font-size:.74rem;color:var(--muted);margin-top:3px;}
+.fk-cta{position:absolute;bottom:12px;right:12px;font-size:.72rem;color:var(--muted);opacity:0;transition:var(--tr);}
+.fin-kpi:hover .fk-cta{opacity:1;}
+
+/* detail sub-panel */
+.fin-sub-panel{border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:18px;animation:sIn .25s ease both;background:rgba(255,255,255,.03);}
+.fin-sub-panel h3{font-size:.95rem;margin-bottom:14px;}
+.fin-entry-form{display:grid;grid-template-columns:1.5fr 1fr 1fr auto;gap:10px;align-items:end;}
+.fef .fl{display:flex;flex-direction:column;gap:5px;}
+.fef .fl label{font-size:.76rem;font-weight:700;color:var(--muted);}
+.fef .fl input,.fef .fl select{padding:9px 13px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.88rem;font-family:inherit;outline:none;transition:border-color .18s;}
+.fef .fl input:focus,.fef .fl select:focus{border-color:rgba(245,158,11,.45);}
+.cat-input-wrap{display:flex;gap:6px;align-items:center;}
+.cat-input-wrap input{flex:1;}
+.cat-save-btn{padding:9px 10px;border-radius:11px;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08);color:#fde68a;font-size:.8rem;cursor:pointer;transition:var(--tr);font-family:inherit;white-space:nowrap;}
+.cat-save-btn:hover{background:rgba(245,158,11,.16);}
+.recent-items h4{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;margin-top:14px;}
+.fin-item{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;border-radius:11px;background:rgba(255,255,255,.03);border:1px solid var(--border);margin-bottom:5px;font-size:.86rem;}
+.fi-left{display:flex;align-items:center;gap:9px;}
+.fi-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.fi-dot.green{background:var(--success);}.fi-dot.red{background:var(--danger);}
+.fi-desc{font-weight:600;}.fi-meta{font-size:.72rem;color:var(--muted);margin-left:4px;}
+.fi-val{font-weight:700;}.fi-val.green{color:var(--success);}.fi-val.red{color:var(--danger);}
+
+/* Charts */
+.fin-charts-row{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:18px;}
+.fchart-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:20px;padding:20px;}
+.fchart-card h3{font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;font-weight:700;}
+.chart-wrap{position:relative;height:190px;}
+.chart-empty{height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;opacity:.5;}
+.chart-empty .ci{font-size:1.8rem;}.chart-empty p{font-size:.82rem;color:var(--muted);text-align:center;}
+
+/* Clientes / Fornecedores / Produtos */
+.crud-wrap{}
+.crud-form-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:16px;}
+.crud-form-card h3{font-size:.9rem;margin-bottom:13px;}
+.crud-form{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;}
+.cf .fl{display:flex;flex-direction:column;gap:4px;}
+.cf .fl label{font-size:.74rem;font-weight:700;color:var(--muted);}
+.cf .fl input{padding:9px 13px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.88rem;font-family:inherit;outline:none;transition:border-color .18s;}
+.cf .fl input:focus{border-color:rgba(75,140,255,.45);}
+.crud-list{display:flex;flex-direction:column;gap:7px;}
+.crud-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:13px;background:rgba(255,255,255,.03);border:1px solid var(--border);font-size:.86rem;}
+.crud-item-left{display:flex;flex-direction:column;}
+.crud-item-name{font-weight:700;}
+.crud-item-sub{font-size:.76rem;color:var(--muted);}
+
+/* Produtos */
+.prod-form{display:grid;grid-template-columns:1.5fr 1fr 1fr auto;gap:10px;align-items:end;}
+
+/* Conciliação */
+.concil-wrap{}
+.file-drop{border:1px dashed rgba(245,158,11,.3);border-radius:16px;padding:28px;text-align:center;cursor:pointer;transition:var(--tr);background:rgba(245,158,11,.03);margin-bottom:16px;}
+.file-drop:hover{border-color:rgba(245,158,11,.6);background:rgba(245,158,11,.06);}
+.file-drop .fd-icon{font-size:2rem;margin-bottom:8px;opacity:.7;}
+.file-drop p{font-size:.86rem;color:var(--muted);}
+.concil-table{width:100%;border-collapse:collapse;font-size:.84rem;}
+.concil-table th,.concil-table td{text-align:left;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.06);}
+.concil-table th{font-size:.73rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.concil-table td{color:var(--text);}
+.concil-row-form{display:flex;gap:7px;align-items:center;}
+.concil-row-form select,.concil-row-form input{padding:5px 9px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.78rem;font-family:inherit;outline:none;}
+.concil-badge{padding:3px 8px;border-radius:999px;font-size:.7rem;font-weight:700;}
+.concil-badge.importado{background:rgba(34,197,94,.1);color:var(--success);}
+.concil-badge.pendente{background:rgba(245,158,11,.1);color:var(--warning);}
+
+/* DRE panel */
+.dre-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.88rem;}
+.dre-line.total{font-weight:900;font-size:.95rem;border-bottom:none;padding-top:12px;}
+.dre-line.neg{color:var(--danger);}.dre-line.pos{color:var(--success);}
+
+/* Evolução */
+.evo-period-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.evo-period-row label{font-size:.8rem;font-weight:700;color:var(--muted);}
+.evo-period-row select{padding:8px 12px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.84rem;font-family:inherit;outline:none;}
+.evo-layout{display:grid;grid-template-columns:260px 1fr;gap:16px;}
+.evo-score-card{padding:22px;border-radius:20px;background:rgba(6,182,212,.04);border:1px solid rgba(6,182,212,.18);text-align:center;}
+.h-bar-row{display:flex;align-items:flex-end;gap:7px;margin-top:14px;height:70px;}
+.h-bar-w{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.h-bar{width:100%;border-radius:7px 7px 0 0;background:linear-gradient(180deg,var(--primary),rgba(75,140,255,.3));min-height:4px;transition:height .6s cubic-bezier(.4,0,.2,1);}
+.h-bar-lbl{font-size:.7rem;color:var(--muted);}.h-bar-val{font-size:.75rem;font-weight:700;}
+.goals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:16px;}
+.goal-card{padding:16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--border);}
+.goal-card h4{font-size:.85rem;margin-bottom:5px;}
+.goal-card p{font-size:.8rem;color:var(--muted);line-height:1.55;}
+.table-lite{width:100%;border-collapse:collapse;font-size:.86rem;}
+.table-lite th,.table-lite td{text-align:left;padding:10px 9px;border-bottom:1px solid rgba(255,255,255,.07);}
+.table-lite th{color:var(--muted);font-size:.73rem;text-transform:uppercase;letter-spacing:.05em;}
+
+/* Responsive */
+@media(max-width:1100px){
+  :root{--sw:52px;}
+  .sb-btn span.sbl,.sb-badge,.sl-lbl{display:none;}
+  .sb-btn{justify-content:center;padding:10px;}
+  .metrics-row,.fin-kpi-row{grid-template-columns:repeat(2,1fr);}
+  .info-grid{grid-template-columns:repeat(2,1fr);}
+  .chat-layout,.evo-layout{grid-template-columns:1fr;}
+  .fin-charts-row{grid-template-columns:1fr;}
+  .fin-entry-form,.prod-form{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:860px){
+  .hero-wrap{grid-template-columns:1fr;padding:30px 22px;}
+  .hero-visual{display:none;}
+  .rgrid,.auth-grid,.swot-grid{grid-template-columns:1fr;}
+  .auth-pitch{display:none;}
+  .fin-kpi-row,.crud-form,.fin-entry-form,.prod-form{grid-template-columns:repeat(2,1fr);}
+  .goals-grid{grid-template-columns:1fr 1fr;}
+  .dash-main{padding:14px;}
+}
+@media(max-width:640px){
+  .fin-kpi-row,.goals-grid,.g2,.metrics-row{grid-template-columns:1fr;}
+  .shell{padding:14px 11px;}
+}
+</style>
+</head>
+<body>
+<div id="toastRoot"></div>
+
+<!-- Priority Modal -->
+<div class="modal-overlay" id="priorityModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('priorityModal')">✕</button>
+    <div class="mod-tag diag" id="modalTag">Prioridade</div>
+    <h2 id="modalTitle"></h2>
+    <p class="modal-sub" id="modalSub"></p>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- Metric detail modal -->
+<div class="modal-overlay" id="metricModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('metricModal')">✕</button>
+    <h2 id="mmTitle"></h2>
+    <p class="modal-sub" id="mmSub"></p>
+    <div id="mmContent"></div>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">DM</div>
+    <div><div class="brand-title">DigitalMind</div><div class="brand-sub" id="brandSub">Diagnóstico estratégico</div></div>
+  </div>
+  <nav class="topnav">
+    <button class="topnav-btn active" id="navDiag" style="display:none">Diagnóstico</button>
+    <button class="topnav-btn" id="navArea"><span class="conn-dot" id="connDot"></span><span>Área da Empresa</span></button>
+  </nav>
+</header>
+
+<main>
+<!-- PAGE: DIAGNÓSTICO -->
+<section class="page active" id="page-diagnostico">
+  <div class="shell">
+    <div class="section hero-wrap" style="margin-bottom:18px;">
+      <div>
+        <div class="eyebrow">Diagnóstico estratégico inicial</div>
+        <h1>Empresas precisam de <em>direção</em>, não de mais marketing.</h1>
+        <p class="hero-sub">Descubra o que está travando o crescimento da sua empresa e receba uma leitura estratégica clara para orientar seu próximo passo.</p>
+        <div class="hero-ctas">
+          <button class="btn btn-primary" id="startDiagBtn">→ Iniciar diagnóstico</button>
+          <button class="btn btn-secondary" id="navAreaBtn">Já tenho conta</button>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-kpi-row">
+          <div class="hero-kpi"><div class="hero-kpi-val" style="color:var(--primary)">6</div><div class="hero-kpi-lbl">Etapas</div></div>
+          <div class="hero-kpi"><div class="hero-kpi-val" style="color:var(--c-vnd)">4</div><div class="hero-kpi-lbl">Módulos</div></div>
+          <div class="hero-kpi"><div class="hero-kpi-val" style="color:var(--c-evo)">IA</div><div class="hero-kpi-lbl">Agentes</div></div>
+        </div>
+        <div class="hero-tag"><div class="hero-tag-dot">📊</div><div class="hero-tag-text"><strong>Diagnóstico → Estratégia → Execução</strong>O sistema aprende e evolui com a empresa.</div></div>
+        <div class="hero-tag"><div class="hero-tag-dot">🧠</div><div class="hero-tag-text"><strong>Matriz Central de Inteligência</strong>Diagnóstico, vendas, marketing e financeiro em um hub.</div></div>
+      </div>
+    </div>
+    <div class="section form-wrap" id="formSection">
+      <div class="prog-row">
+        <span class="prog-label" id="progLabel">Etapa 1 de 6</span>
+        <div class="prog-track"><div class="prog-bar" id="progBar" style="width:16.66%"></div></div>
+      </div>
+      <div class="step-dots" id="stepDots"></div>
+      <div class="form-card" id="formCard">
+        <div class="step-tag" id="stepTag">Etapa 1</div>
+        <h2 class="step-title" id="stepTitle">Vamos começar com o básico</h2>
+        <p class="step-sub" id="stepSub">Preencha as informações iniciais.</p>
+        <div id="stepFields"></div>
+        <div class="form-actions">
+          <button class="btn btn-ghost" id="prevBtn" style="visibility:hidden">← Voltar</button>
+          <button class="btn btn-primary" id="nextBtn">Próxima etapa →</button>
+        </div>
+        <p class="hint-text" id="stepHint" style="margin-top:10px;">Responda uma etapa por vez.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: RESULTADO -->
+<section class="page" id="page-resultado">
+  <div class="shell">
+    <div class="section result-wrap">
+      <div class="result-header">
+        <div>
+          <div class="eyebrow">Diagnóstico concluído</div>
+          <h2 class="result-title">Sua leitura estratégica está pronta</h2>
+          <p style="color:var(--muted);line-height:1.65;margin-top:8px;max-width:50ch;font-size:.9rem;">Cenário, gargalos e direcionamento inicial.</p>
+        </div>
+        <div class="rscore" id="resultBadge"><span id="resultScore">–</span></div>
+      </div>
+      <div class="rgrid">
+        <div class="rcrd"><h3>Visão geral</h3><p id="rOverview"></p></div>
+        <div class="rcrd"><h3>Gargalos</h3><ul id="rGaps"></ul></div>
+        <div class="rcrd full"><h3>Direcionamento</h3><p id="rDirection"></p></div>
+        <div class="rcrd"><h3>SWOT</h3><div class="swot-grid" id="rSwot"></div></div>
+        <div class="rcrd"><h3>Ponto de atenção</h3><p id="rAttention"></p></div>
+      </div>
+      <div class="result-cta">
+        <div><h3>Agora a leitura vira acompanhamento.</h3><p>Diagnóstico, vendas, marketing, financeiro e evolução se conectam em um único hub.</p></div>
+        <button class="btn btn-primary" id="goAuthBtn">Abrir Área da Empresa →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: AUTH -->
+<section class="page" id="page-auth">
+  <div class="shell">
+    <div class="section auth-wrap">
+      <div class="auth-grid">
+        <div class="auth-pitch">
+          <div class="eyebrow">Próxima etapa</div>
+          <h2>Entre ou crie sua conta para continuar</h2>
+          <p>A empresa entra em uma camada organizada. Diagnóstico, vendas, marketing e financeiro se conectam.</p>
+          <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-diag)"></div><span class="auth-feat-text">Diagnóstico estratégico salvo</span></div>
+          <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-mkt)"></div><span class="auth-feat-text">Agente de Marketing contextualizado</span></div>
+          <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-vnd)"></div><span class="auth-feat-text">Diagnóstico passo a passo de Vendas</span></div>
+          <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-fin)"></div><span class="auth-feat-text">Financeiro com dashboard e gráficos</span></div>
+          <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-evo)"></div><span class="auth-feat-text">Score de maturidade e evolução</span></div>
+        </div>
+        <div class="card auth-form-card">
+          <div class="auth-tabs">
+            <button class="auth-tab active" id="loginTab">Entrar</button>
+            <button class="auth-tab" id="signupTab">Criar conta</button>
+          </div>
+          <div class="field" style="margin-bottom:12px;"><label for="authEmail">Email</label><input type="email" id="authEmail" placeholder="seuemail@empresa.com"/></div>
+          <div class="field" style="margin-bottom:18px;"><label for="authPass">Senha</label><input type="password" id="authPass" placeholder="Digite sua senha"/></div>
+          <button class="btn btn-primary" id="authBtn" style="width:100%">Entrar →</button>
+          <p style="text-align:center;margin-top:12px;font-size:.8rem;color:var(--muted);">Preview local disponível sem conta</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: DASHBOARD -->
+<section class="page" id="page-dashboard">
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <div class="sl-lbl">Empresa</div>
+      <button class="sb-btn active" data-mod="diagnostico" style="--mod-color:var(--c-diag);--mod-bg:var(--c-diag-bg)"><div class="sb-icon">DX</div><span class="sbl">Diagnóstico</span><span class="sb-badge">Base</span></button>
+      <div class="sb-divider"></div>
+      <div class="sl-lbl">Módulos</div>
+      <button class="sb-btn" data-mod="marketing" style="--mod-color:var(--c-mkt);--mod-bg:var(--c-mkt-bg)"><div class="sb-icon">MK</div><span class="sbl">Marketing</span></button>
+      <button class="sb-btn" data-mod="vendas" style="--mod-color:var(--c-vnd);--mod-bg:var(--c-vnd-bg)"><div class="sb-icon">VD</div><span class="sbl">Vendas</span><span class="sb-badge pending" id="vBadge">Pendente</span></button>
+      <button class="sb-btn" data-mod="financeiro" style="--mod-color:var(--c-fin);--mod-bg:var(--c-fin-bg)"><div class="sb-icon">FN</div><span class="sbl">Financeiro</span></button>
+      <button class="sb-btn" data-mod="evolucao" style="--mod-color:var(--c-evo);--mod-bg:var(--c-evo-bg)"><div class="sb-icon">EV</div><span class="sbl">Evolução</span></button>
+      <div class="sb-bottom">
+        <button class="sb-btn" id="logoutBtn"><div class="sb-icon">↩</div><span class="sbl">Sair</span></button>
+      </div>
+    </aside>
+
+    <div class="dash-main">
+      <!-- DIAGNÓSTICO MODULE -->
+      <div class="module active" id="module-diagnostico">
+        <div class="mod-header">
+          <div class="mod-tag diag">Diagnóstico</div>
+          <h2>Base estratégica da empresa</h2>
+          <p>Leitura organizada em quatro áreas para consulta e referência dos outros módulos.</p>
+        </div>
+        <!-- Metrics cards only here -->
+        <div class="metrics-row">
+          <div class="metric-card" onclick="openMetric('maturidade')"><div class="metric-lbl">Maturidade digital</div><div class="metric-val" id="mMaturidade" style="color:var(--primary)">–</div><div class="metric-trend neutral" id="mTrend">● Panorama inicial</div></div>
+          <div class="metric-card" onclick="openMetric('prioridades')"><div class="metric-lbl">Prioridades ativas</div><div class="metric-val" id="mPrioridades" style="color:var(--c-mkt)">–</div><div class="metric-note">Clique para ver detalhes</div></div>
+          <div class="metric-card" onclick="openMetric('modulos')"><div class="metric-lbl">Módulos ativos</div><div class="metric-val" style="color:var(--c-vnd)">4</div><div class="metric-note">Mkt · Vnd · Fin · Evo</div></div>
+          <div class="metric-card" onclick="openMetric('diagnostico')"><div class="metric-lbl">Diagnóstico</div><div class="metric-val" style="color:var(--c-evo)" id="mDiag">–</div><div class="metric-note" id="mDiagNote">Aguardando dados</div></div>
+        </div>
+        <div class="info-grid">
+          <div class="info-card acc-diag"><h3>Diagnóstico Estratégico</h3><p id="dOverview" class="muted">–</p></div>
+          <div class="info-card"><h3>Resumo Executivo</h3><p id="dSummary" class="muted">–</p></div>
+          <div class="info-card"><h3>Maturidade Digital</h3><div class="score-ring" id="scoreRing"><span id="dScore">–</span></div><p style="text-align:center;font-size:.8rem;color:var(--muted)" id="dMatText">–</p></div>
+          <div class="info-card full">
+            <h3>Prioridades Identificadas</h3>
+            <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">Clique em uma prioridade para ver as recomendações.</p>
+            <div class="pill-row" id="dPriorities"></div>
+            <div class="priority-detail" id="priorityDetail"></div>
+          </div>
+        </div>
+        <div id="dEmpty" class="empty-state hidden">
+          <div class="empty-icon">📋</div><p>Nenhum diagnóstico encontrado. Complete o formulário para ver sua leitura estratégica aqui.</p>
+          <button class="btn btn-primary btn-sm" style="margin-top:13px" onclick="goToStep('diagnostico')">Fazer diagnóstico →</button>
+        </div>
+        <div class="sep"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <p style="font-size:.84rem;color:var(--muted);">O diagnóstico é a base de todos os módulos. Refaça sempre que a empresa evoluir.</p>
+          <button class="btn btn-ghost btn-sm" id="redoDiagBtn">↺ Atualizar diagnóstico</button>
+        </div>
+      </div>
+
+      <!-- MARKETING MODULE -->
+      <div class="module" id="module-marketing">
+        <div class="mod-header">
+          <div class="mod-tag mkt">Agente DigitalMind Marketing</div>
+          <h2>Marketing com direção, não só execução</h2>
+          <p>Usa diagnóstico e prioridades para devolver orientações estratégicas de posicionamento e comunicação.</p>
+        </div>
+        <div class="info-grid" style="margin-bottom:16px;">
+          <div class="info-card acc-mkt"><h3>Leitura central</h3><p id="mktCore" class="muted">–</p></div>
+          <div class="info-card"><h3>Focos de marketing</h3><ul id="mktFocus"></ul></div>
+          <div class="info-card"><h3>Próximos passos</h3><ul id="mktSteps"></ul></div>
+        </div>
+        <div class="chat-layout">
+          <div class="card"><h3 style="margin-bottom:11px">Converse com o agente</h3>
+            <div class="chat-box" id="mktChat"></div>
+            <div class="chat-input-row"><input id="mktInput" type="text" placeholder="Ex.: O que devo melhorar primeiro no marketing?"/><button class="btn btn-primary btn-sm" id="mktSend">Enviar</button></div>
+          </div>
+          <div class="card"><h3 style="margin-bottom:11px">Sugestões rápidas</h3>
+            <div class="chat-prompts">
+              <button class="prompt-btn mkt-prompt">Qual é meu maior erro de marketing hoje?</button>
+              <button class="prompt-btn mkt-prompt">O que preciso ajustar no posicionamento?</button>
+              <button class="prompt-btn mkt-prompt">Que tipo de conteúdo faz mais sentido?</button>
+            </div>
+            <div class="status-row" style="margin-top:13px"><span>🧠</span>Contexto: diagnóstico, prioridades e maturidade.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VENDAS MODULE -->
+      <div class="module" id="module-vendas">
+        <div class="mod-header">
+          <div class="mod-tag vnd">Agente DigitalMind Vendas</div>
+          <h2>Diagnóstico de vendas</h2>
+          <p>Responda as 10 perguntas para liberar o agente com orientação específica ao seu processo comercial.</p>
+        </div>
+        <div id="salesStepWrap">
+          <div class="sales-prog-row">
+            <span class="sales-prog-label" id="sProgLabel">Pergunta 1 de 10</span>
+            <div class="sales-prog-track"><div class="sales-prog-bar" id="sProgBar" style="width:10%"></div></div>
+          </div>
+          <div class="sales-step-dots" id="sStepDots"></div>
+          <div class="sales-q-card">
+            <div class="sales-q-lbl" id="sQLabel">Pergunta 1 de 10</div>
+            <div class="sales-q-title" id="sQTitle">Como os clientes descobrem você hoje?</div>
+            <textarea class="sales-q-ta" id="sQTextarea" placeholder="Digite sua resposta..."></textarea>
+            <div class="sales-nav">
+              <div class="hint-text" id="sHint">Responda e avance para a próxima.</div>
+              <div style="display:flex;gap:9px">
+                <button class="btn btn-ghost btn-sm" id="sPrevBtn" style="visibility:hidden">← Voltar</button>
+                <button class="btn btn-primary btn-sm" id="sNextBtn">Próxima →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="salesDoneWrap" class="hidden">
+          <div class="info-grid" style="margin-bottom:16px">
+            <div class="info-card acc-vnd"><h3>Diagnóstico comercial</h3><p id="sSummary" class="muted">–</p></div>
+            <div class="info-card"><h3>Principais travas</h3><ul id="sWeaknesses"></ul></div>
+            <div class="info-card"><h3>Ações imediatas</h3><ul id="sActions"></ul></div>
+          </div>
+          <div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" id="sRedoBtn">↺ Refazer diagnóstico</button></div>
+          <div class="chat-layout">
+            <div class="card"><h3 style="margin-bottom:11px">Converse com o agente</h3>
+              <div class="chat-box" id="salesChat"></div>
+              <div class="chat-input-row"><input id="salesInput" type="text" placeholder="Ex.: Como parar de perder leads?"/><button class="btn btn-primary btn-sm" id="salesSend">Enviar</button></div>
+            </div>
+            <div class="card"><h3 style="margin-bottom:11px">Sugestões rápidas</h3>
+              <div class="chat-prompts">
+                <button class="prompt-btn sales-prompt">Como vender mais com o que já tenho?</button>
+                <button class="prompt-btn sales-prompt">Qual é meu maior gargalo comercial?</button>
+                <button class="prompt-btn sales-prompt">Como organizar meu follow-up?</button>
+              </div>
+              <div class="status-row" style="margin-top:13px"><span>🧠</span>Contexto: diagnóstico + perfil de vendas.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FINANCEIRO MODULE -->
+      <div class="module" id="module-financeiro">
+        <div class="mod-header">
+          <div class="mod-tag fin">Financeiro</div>
+          <h2>Painel financeiro da empresa</h2>
+          <p>Clique em um card para lançar ou visualizar. Os gráficos se atualizam automaticamente.</p>
+        </div>
+        <div class="fin-tabs">
+          <button class="fin-tab active" data-ftab="overview">Visão Geral</button>
+          <button class="fin-tab" data-ftab="receitas">Receitas</button>
+          <button class="fin-tab" data-ftab="despesas">Despesas</button>
+          <button class="fin-tab" data-ftab="clientes">Clientes</button>
+          <button class="fin-tab" data-ftab="produtos">Produtos</button>
+          <button class="fin-tab" data-ftab="conciliacao">Conciliação</button>
+        </div>
+
+        <!-- VISÃO GERAL -->
+        <div class="fin-panel active" id="ftab-overview">
+          <div class="fin-kpi-row">
+            <div class="fin-kpi receita" onclick="switchFinTab('receitas')"><div class="fki green">💰</div><div class="fk-lbl">Receitas</div><div class="fk-val green" id="fkReceitas">R$ 0,00</div><div class="fk-hint" id="fkRCount">0 lançamentos</div><div class="fk-cta">Abrir →</div></div>
+            <div class="fin-kpi despesa" onclick="switchFinTab('despesas')"><div class="fki red">💸</div><div class="fk-lbl">Despesas</div><div class="fk-val red" id="fkDespesas">R$ 0,00</div><div class="fk-hint" id="fkDCount">0 lançamentos</div><div class="fk-cta">Abrir →</div></div>
+            <div class="fin-kpi saldo" onclick="openSaldoDetail()"><div class="fki blue">🏦</div><div class="fk-lbl">Saldo atual</div><div class="fk-val blue" id="fkSaldo">R$ 0,00</div><div class="fk-hint">Receitas − Despesas</div><div class="fk-cta">Ver detalhes →</div></div>
+            <div class="fin-kpi dre" onclick="openDREDetail()"><div class="fki amber">📊</div><div class="fk-lbl">DRE</div><div class="fk-val amber" id="fkDRE">0%</div><div class="fk-hint" id="fkDREHint">Margem líquida</div><div class="fk-cta">Ver DRE →</div></div>
+          </div>
+          <!-- Saldo detail sub-panel -->
+          <div class="fin-sub-panel hidden" id="saldoPanel">
+            <h3>🏦 Saldo atual — Detalhamento</h3>
+            <div id="saldoContent"></div>
+          </div>
+          <!-- DRE sub-panel -->
+          <div class="fin-sub-panel hidden" id="drePanel">
+            <h3>📊 DRE — Demonstrativo de Resultado</h3>
+            <div id="dreContent"></div>
+          </div>
+          <div class="fin-charts-row">
+            <div class="fchart-card">
+              <h3>Fluxo de caixa — Receitas vs Despesas</h3>
+              <div class="chart-wrap"><div class="chart-empty" id="fceFluxo"><div class="ci">📈</div><p>Adicione lançamentos para ver o gráfico</p></div><canvas id="fluxoChart" style="display:none"></canvas></div>
+            </div>
+            <div class="fchart-card">
+              <h3>Composição das despesas</h3>
+              <div class="chart-wrap"><div class="chart-empty" id="fceCompo"><div class="ci">🍩</div><p>Adicione despesas para ver a composição</p></div><canvas id="compoChart" style="display:none"></canvas></div>
+            </div>
+          </div>
+          <div class="fchart-card" id="allTxPanel" style="display:none">
+            <h3>Todas as transações</h3>
+            <div id="allTxList"></div>
+          </div>
+        </div>
+
+        <!-- RECEITAS -->
+        <div class="fin-panel" id="ftab-receitas">
+          <div class="fin-sub-panel" style="margin-bottom:0">
+            <h3>💰 Lançar receita</h3>
+            <div class="fef fin-entry-form" id="receitaForm">
+              <div class="fl"><label>Descrição</label><input type="text" id="rDesc" placeholder="Ex.: Venda de serviço"/></div>
+              <div class="fl"><label>Valor (R$)</label><input type="number" id="rValor" placeholder="0.00" min="0" step="0.01"/></div>
+              <div class="fl"><label>Cliente</label><select id="rCliente"><option value="">Selecionar...</option></select></div>
+              <div class="fl"><label>Produto/Serviço</label><select id="rProduto"><option value="">Selecionar...</option></select></div>
+              <div class="fl" style="grid-column:1/-1">
+                <label>Categoria</label>
+                <div class="cat-input-wrap">
+                  <input type="text" id="rCatInput" list="rCatList" placeholder="Digite ou selecione uma categoria..."/>
+                  <datalist id="rCatList"></datalist>
+                  <button class="cat-save-btn" onclick="saveCat('receita')">+ Salvar categoria</button>
+                </div>
+              </div>
+              <div class="fl"><button class="btn btn-success" onclick="addTx('receita')" style="width:100%;margin-top:18px">Adicionar receita</button></div>
+            </div>
+            <div class="recent-items"><h4>Receitas lançadas</h4><div id="receitaList"></div></div>
+          </div>
+        </div>
+
+        <!-- DESPESAS -->
+        <div class="fin-panel" id="ftab-despesas">
+          <div class="fin-sub-panel" style="margin-bottom:0">
+            <h3>💸 Lançar despesa</h3>
+            <div class="fef fin-entry-form" id="despesaForm">
+              <div class="fl"><label>Descrição</label><input type="text" id="dDesc" placeholder="Ex.: Pagamento de aluguel"/></div>
+              <div class="fl"><label>Valor (R$)</label><input type="number" id="dValor" placeholder="0.00" min="0" step="0.01"/></div>
+              <div class="fl"><label>Fornecedor</label><select id="dFornecedor"><option value="">Selecionar...</option></select></div>
+              <div class="fl" style="grid-column:1/-1">
+                <label>Categoria</label>
+                <div class="cat-input-wrap">
+                  <input type="text" id="dCatInput" list="dCatList" placeholder="Digite ou selecione uma categoria..."/>
+                  <datalist id="dCatList"></datalist>
+                  <button class="cat-save-btn" onclick="saveCat('despesa')">+ Salvar categoria</button>
+                </div>
+              </div>
+              <div class="fl"><button class="btn btn-primary" onclick="addTx('despesa')" style="background:linear-gradient(135deg,var(--danger),#b91c1c);width:100%;margin-top:18px">Adicionar despesa</button></div>
+            </div>
+            <div class="recent-items"><h4>Despesas lançadas</h4><div id="despesaList"></div></div>
+          </div>
+        </div>
+
+        <!-- CLIENTES -->
+        <div class="fin-panel" id="ftab-clientes">
+          <div class="crud-form-card">
+            <h3>👥 Novo cliente ou fornecedor</h3>
+            <div class="cf crud-form">
+              <div class="fl"><label>Nome</label><input type="text" id="cNome" placeholder="Nome do cliente/fornecedor"/></div>
+              <div class="fl"><label>Contato (opcional)</label><input type="text" id="cContato" placeholder="Telefone ou email"/></div>
+              <div class="fl"><label>Tipo</label>
+                <select id="cTipo" style="padding:9px 13px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-family:inherit;outline:none;">
+                  <option value="cliente">Cliente</option>
+                  <option value="fornecedor">Fornecedor</option>
+                </select>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="addContact()" style="align-self:end">Adicionar</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <h4 style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Clientes</h4>
+              <div class="crud-list" id="clienteList"></div>
+            </div>
+            <div>
+              <h4 style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Fornecedores</h4>
+              <div class="crud-list" id="fornecedorList"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PRODUTOS -->
+        <div class="fin-panel" id="ftab-produtos">
+          <div class="crud-form-card">
+            <h3>📦 Novo produto ou serviço</h3>
+            <div class="cf prod-form">
+              <div class="fl"><label>Nome</label><input type="text" id="pNome" placeholder="Ex.: Consultoria mensal"/></div>
+              <div class="fl"><label>Preço (R$)</label><input type="number" id="pPreco" placeholder="0.00" min="0" step="0.01"/></div>
+              <div class="fl"><label>Categoria</label><input type="text" id="pCat" list="rCatList" placeholder="Ex.: Serviços"/></div>
+              <button class="btn btn-primary btn-sm" onclick="addProduct()" style="align-self:end">Adicionar</button>
+            </div>
+          </div>
+          <div class="crud-list" id="produtoList"></div>
+        </div>
+
+        <!-- CONCILIAÇÃO BANCÁRIA -->
+        <div class="fin-panel" id="ftab-conciliacao">
+          <div class="file-drop" id="concilDrop" onclick="$('concilFile').click()">
+            <div class="fd-icon">📂</div>
+            <p><strong>Arraste ou clique para subir extrato bancário</strong></p>
+            <p style="font-size:.78rem;margin-top:4px">Formatos aceitos: CSV, OFX, TXT</p>
+            <input type="file" id="concilFile" accept=".csv,.ofx,.txt" style="display:none"/>
+          </div>
+          <div id="concilTableWrap" class="hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <h3 style="font-size:.95rem">Transações identificadas</h3>
+              <button class="btn btn-success btn-sm" onclick="importAllConcil()">Importar selecionadas →</button>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="concil-table" id="concilTable">
+                <thead><tr><th><input type="checkbox" id="concilAll" onchange="toggleAllConcil(this)"/></th><th>Data</th><th>Descrição</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Status</th></tr></thead>
+                <tbody id="concilBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="status-row" id="concilStatus" style="margin-top:12px"><span>ℹ️</span>Nenhum extrato importado. Suba um arquivo CSV para começar.</div>
+        </div>
+      </div>
+
+      <!-- EVOLUÇÃO MODULE -->
+      <div class="module" id="module-evolucao">
+        <div class="mod-header">
+          <div class="mod-tag evo">Evolução</div>
+          <h2>Maturidade e avanço da empresa</h2>
+          <p>Acompanhe o score de maturidade por período. Selecione o intervalo para filtrar os dados.</p>
+        </div>
+        <div class="evo-period-row">
+          <label>Período:</label>
+          <select id="evoPeriodStart" onchange="renderEvo()"></select>
+          <span style="color:var(--muted);font-size:.84rem">até</span>
+          <select id="evoPeriodEnd" onchange="renderEvo()"></select>
+          <button class="btn btn-ghost btn-sm" onclick="resetEvoPeriod()">Todos</button>
+        </div>
+        <div class="evo-layout">
+          <div class="evo-score-card">
+            <p style="font-size:.76rem;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;font-weight:700">Maturidade atual</p>
+            <div class="score-ring" id="evoRing" style="--score:0"><span id="evoScore">–</span></div>
+            <p style="font-size:.82rem;color:var(--muted);line-height:1.55" id="evoText">–</p>
+            <div class="sep"></div>
+            <p style="font-size:.76rem;color:var(--muted);margin-bottom:7px;font-weight:700">Histórico</p>
+            <div class="h-bar-row" id="evoBars"></div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:16px">
+              <h3 style="margin-bottom:11px;font-size:.95rem">Linha do tempo</h3>
+              <div id="evoTableWrap"><div class="empty-state"><p>Nenhum dado registrado ainda para o período selecionado.</p></div></div>
+            </div>
+            <div class="goals-grid">
+              <div class="goal-card"><h4>🎯 Meta 1</h4><p>Organizar processo comercial e parar de perder leads.</p></div>
+              <div class="goal-card"><h4>🎯 Meta 2</h4><p>Definir posicionamento com mais percepção de valor.</p></div>
+              <div class="goal-card"><h4>🎯 Meta 3</h4><p>Base financeira mínima para decisões mais inteligentes.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ═══════════════════════════════════════════════════
+   SUPABASE CONFIG — preencha antes de fazer deploy
+   Supabase > Settings > API
+═══════════════════════════════════════════════════ */
+const SUPABASE_URL     = 'https://tfwqqljgksumnmklhpri.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmd3FxbGpna3N1bW5ta2xocHJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDQ5NzYsImV4cCI6MjA5MDEyMDk3Nn0.3vtRpWSia_RvDX1muOQ-17iBAC3BE2Zw1byKKrpNpho';
+
+/* ═══════════════ STATE ═══════════════ */
+/* Supabase client — inicializado no topo do script */
+let supa = null;
+try {
+  supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch(e) { console.warn('Supabase não inicializado:', e); }
+
+const S = {
+  step:'diagnostico', isLogged:false, authMode:'login',
+  formStep:0, activeMod:'diagnostico', activeFinTab:'overview',
+  formData:{companyName:'',segment:'',marketTime:'',city:'',salesModel:'',leadSource:'',digitalPresence:'',mainDifficulty:'',failedAttempt:'',mainGoal:'',desiredAdvance:''},
+  diag:null, salesProfile:null,
+  salesAnswers: Array(10).fill(''), salesStep:0,
+  financial:{ transactions:[] },
+  categories:{ receita:['Serviços','Produto','Recorrência'], despesa:['Salário','Aluguel','Marketing','Operacional','Imposto'] },
+  contacts:[],
+  products:[],
+  conciliacao:[],
+  evoHistory:[],
+  ci:{},
+  // Supabase runtime refs
+  user: null,
+  companyId: null,
+  connected: false
+};
+let fluxoChart=null, compoChart=null;
+const SKEY = 'dm_v19';
+
+/* ═══════════════ HELPERS ═══════════════ */
+const $=id=>document.getElementById(id);
+function fmtBRL(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);}
+function uuid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+
+function toast(msg,type='info',title=''){
+  const r=$('toastRoot'); const el=document.createElement('div'); el.className=`toast ${type}`;
+  const ic={success:'✅',error:'❌',info:'ℹ️',warning:'⚠️'};
+  el.innerHTML=`<span>${ic[type]||'ℹ️'}</span><div class="toast-msg">${title?`<strong>${title}</strong>`:''}${msg}</div>`;
+  r.appendChild(el); setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),300);},4200);
+}
+function openModal(id){$(id).classList.add('open');}
+function closeModal(id){$(id).classList.remove('open');}
+
+/* ═══════════════ STORAGE ═══════════════ */
+function save(){
+  try{localStorage.setItem(SKEY,JSON.stringify({
+    formData:S.formData, diag:S.diag, salesProfile:S.salesProfile,
+    salesAnswers:S.salesAnswers, financial:S.financial,
+    categories:S.categories, contacts:S.contacts, products:S.products,
+    evoHistory:S.evoHistory, ci:S.ci, companyId:S.companyId
+  }));}catch(e){}
+}
+function load(){
+  try{
+    const r=localStorage.getItem(SKEY); if(!r)return; const d=JSON.parse(r);
+    S.formData={...S.formData,...(d.formData||{})};
+    S.diag=d.diag||null; S.salesProfile=d.salesProfile||null;
+    S.salesAnswers=d.salesAnswers||Array(10).fill('');
+    if(d.financial) S.financial={...S.financial,...d.financial};
+    if(d.categories) S.categories={
+      receita:[...new Set([...S.categories.receita,...(d.categories.receita||[])])],
+      despesa:[...new Set([...S.categories.despesa,...(d.categories.despesa||[])])]
+    };
+    if(d.contacts)  S.contacts=d.contacts;
+    if(d.products)  S.products=d.products;
+    if(d.evoHistory)S.evoHistory=d.evoHistory;
+    if(d.ci)        S.ci=d.ci;
+    if(d.companyId) S.companyId=d.companyId;
+  }catch(e){}
+}
+
+/* ═══════════════ SUPABASE ═══════════════ */
+function createSupa(){ return supa; }
+
+async function testSupa(){
+  if(!supa) return false;
+  try{
+    const {data,error}=await supa.auth.getSession();
+    if(error) throw error;
+    S.connected=true;
+    S.user=data?.session?.user||null;
+    $('connDot')?.classList.toggle('ok', Boolean(S.user));
+    return Boolean(S.user);
+  }catch(e){ S.connected=false; return false; }
+}
+
+/* ── Garante/cria registro da empresa ── */
+async function ensureCompany(){
+  if(!supa||!S.user) return null;
+  try{
+    const {data:rows}=await supa.from('companies').select('id')
+      .eq('owner_user_id',S.user.id).order('created_at',{ascending:false}).limit(1);
+    const existing=rows&&rows.length?rows[0]:null;
+    const payload={
+      owner_user_id:S.user.id,
+      company_name:S.formData.companyName||'Minha Empresa',
+      city:S.formData.city||null,
+      segment:S.formData.segment||null,
+      market_time:S.formData.marketTime||null,
+      sales_model:S.formData.salesModel||null,
+      lead_source:S.formData.leadSource||null,
+      main_goal:S.formData.mainGoal||null,
+      main_difficulty:S.formData.mainDifficulty||null,
+      failed_attempt:S.formData.failedAttempt||null,
+      desired_advance:S.formData.desiredAdvance||null,
+      status:'active'
+    };
+    if(existing){
+      await supa.from('companies').update(payload).eq('id',existing.id);
+      S.companyId=existing.id; save(); return existing.id;
+    }
+    const {data:created,error}=await supa.from('companies').insert(payload).select('id').single();
+    if(error) throw error;
+    S.companyId=created.id; save(); return created.id;
+  }catch(e){ console.error('ensureCompany:',e); return null; }
+}
+
+/* ── Chama Edge Function gerar-diagnostico (Gemini AI) ── */
+async function callDiagnosticoAI(){
+  if(!supa||!S.user) return null;
+  try{
+    const {data,error}=await supa.functions.invoke('gerar-diagnostico',{
+      body:{
+        nome:S.user.email||S.formData.companyName,
+        empresa:S.formData.companyName,
+        cidade:S.formData.city,
+        o_que_vende:S.formData.segment,
+        como_vende:S.formData.salesModel,
+        frequencia_postagem:S.formData.digitalPresence,
+        dificuldade:S.formData.mainDifficulty,
+        travamento:S.formData.failedAttempt,
+        objetivo:S.formData.mainGoal,
+        faturamento:'',
+        investimento_marketing:'',
+        investimento_anuncios:''
+      }
+    });
+    if(error) throw error;
+    return data; // { status_empresa, visao_geral, diagnostico_estrategico, principais_gargalos, swot, ... }
+  }catch(e){ console.error('callDiagnosticoAI:',e); return null; }
+}
+
+/* ── Salva diagnóstico no Supabase ── */
+async function persistDiag(companyId, diagAI){
+  if(!supa||!S.user||!companyId) return;
+  try{
+    const score=S.diag?.sc||computeScore(S.formData);
+    const level=score>=75?'avancado':score>=55?'intermediario':'iniciante';
+    await supa.from('company_diagnostics').insert({
+      company_id:companyId,
+      user_id:S.user.id,
+      raw_answers:S.formData,
+      diagnostico_texto:JSON.stringify(diagAI||S.diag),
+      swot_texto:JSON.stringify(diagAI?.swot||S.diag?.swot||{}),
+      maturity_score:score,
+      maturity_level:level,
+      status:'completed',
+      source:'app_v19'
+    });
+    // Upsert maturity
+    await supa.from('company_maturity').upsert({
+      company_id:companyId,
+      user_id:S.user.id,
+      score,
+      level,
+      summary:diagAI?.conclusao_estrategica||S.diag?.summary||''
+    },{onConflict:'company_id'});
+    // Upsert intelligence
+    await supa.from('company_intelligence').upsert({
+      company_id:companyId,
+      diagnostic:{...S.formData,...(diagAI||{})},
+      maturity_score:score,
+      main_gaps:diagAI?.principais_gargalos||S.diag?.gaps||[],
+      priorities:S.diag?.priorities||[],
+      ai_context:{summary:diagAI?.conclusao_estrategica||'',source:'gemini'},
+      last_updates:{diagnostic_at:new Date().toISOString(),source:'v19'}
+    },{onConflict:'company_id'});
+    // Evo history via helper function
+    const now=new Date();
+    await supa.rpc('upsert_evo_history',{
+      p_company_id:companyId, p_user_id:S.user.id,
+      p_month:now.getMonth(), p_year:now.getFullYear(),
+      p_score:score, p_label:'Diagnóstico atualizado'
+    });
+  }catch(e){ console.error('persistDiag:',e); }
+}
+
+/* ── Salva sales profile ── */
+async function persistSales(companyId){
+  if(!supa||!S.user||!companyId||!S.salesProfile) return;
+  try{
+    const a=S.salesProfile.answers||[];
+    const payload={
+      company_id:companyId,
+      q1_how_clients_find_you:a[0]||null, q2_when_interest_happens:a[1]||null,
+      q3_talk_to_all_or_lose_some:a[2]||null, q4_where_leads_are_recorded:a[3]||null,
+      q5_followup_process:a[4]||null, q6_main_questions_before_buying:a[5]||null,
+      q7_why_people_drop:a[6]||null, q8_sales_frequency_visibility:a[7]||null,
+      q9_sales_process_or_improvise:a[8]||null, q10_hardest_part_of_selling:a[9]||null,
+      summary:S.salesProfile.summary||null,
+      main_gap:(S.salesProfile.weaknesses||[])[0]||null,
+      recommendations:S.salesProfile.actions||[]
+    };
+    // Tenta com user_id, fallback sem ele se coluna ainda nao existir
+    const {error}=await supa.from('company_sales_profile').insert({...payload,user_id:S.user.id});
+    if(error&&error.code==='42703'){
+      const {error:e2}=await supa.from('company_sales_profile').insert(payload);
+      if(e2) throw e2;
+    } else if(error) throw error;
+  }catch(e){ console.error('persistSales:',e); }
+}
+
+/* ── Salva transação financeira ── */
+async function persistTx(tx){
+  if(!supa||!S.user||!S.companyId) return;
+  try{
+    await supa.from('financial_transactions').insert({
+      company_id:S.companyId, user_id:S.user.id,
+      tipo:tx.tipo, descricao:tx.desc, valor:tx.valor,
+      categoria:tx.cat||null,
+      contact_id:tx.clienteId||tx.fornecedorId||null,
+      product_id:tx.produtoId||null,
+      data_lancamento:tx.dataISO||new Date().toISOString().split('T')[0]
+    });
+  }catch(e){ console.error('persistTx:',e); }
+}
+
+/* ── Salva contact ── */
+async function persistContact(contact){
+  if(!supa||!S.user||!S.companyId) return contact.id;
+  try{
+    const {data,error}=await supa.from('contacts').insert({
+      company_id:S.companyId, user_id:S.user.id,
+      nome:contact.nome, contato:contact.contato||null, tipo:contact.tipo
+    }).select('id').single();
+    if(error) throw error;
+    return data.id;
+  }catch(e){ console.error('persistContact:',e); return contact.id; }
+}
+
+/* ── Salva product ── */
+async function persistProduct(product){
+  if(!supa||!S.user||!S.companyId) return product.id;
+  try{
+    const {data,error}=await supa.from('products').insert({
+      company_id:S.companyId, user_id:S.user.id,
+      nome:product.nome, preco:product.preco||0, categoria:product.categoria||null
+    }).select('id').single();
+    if(error) throw error;
+    return data.id;
+  }catch(e){ console.error('persistProduct:',e); return product.id; }
+}
+
+/* ── Salva categoria ── */
+async function persistCategory(nome,tipo){
+  if(!supa||!S.user||!S.companyId) return;
+  try{
+    await supa.from('financial_categories').insert({
+      company_id:S.companyId, user_id:S.user.id, nome, tipo
+    });
+  }catch(e){ /* silently ignore unique constraint errors */ }
+}
+
+/* ── Hidrata todos os dados do Supabase após login ── */
+async function hydrateFromSupabase(){
+  if(!supa||!S.user) return;
+  try{
+    // Empresa
+    const {data:companies}=await supa.from('companies').select('*')
+      .eq('owner_user_id',S.user.id).order('created_at',{ascending:false}).limit(1);
+    const company=companies?.[0]||null;
+    if(!company) return;
+    S.companyId=company.id;
+    S.formData={...S.formData,
+      companyName:company.company_name||S.formData.companyName,
+      city:company.city||S.formData.city,
+      segment:company.segment||S.formData.segment,
+      marketTime:company.market_time||S.formData.marketTime,
+      salesModel:company.sales_model||S.formData.salesModel,
+      mainGoal:company.main_goal||S.formData.mainGoal,
+      mainDifficulty:company.main_difficulty||S.formData.mainDifficulty
+    };
+
+    // Diagnóstico mais recente
+    const {data:diags}=await supa.from('company_diagnostics').select('*')
+      .eq('company_id',company.id).order('created_at',{ascending:false}).limit(1);
+    if(diags?.[0]){
+      const d=diags[0];
+      let parsed=null;
+      try{ parsed=JSON.parse(d.diagnostico_texto||'null'); }catch(e){}
+      if(parsed&&!S.diag){
+        // Reconstrói diag local a partir do que veio do Supabase
+        S.diag=buildDiagFromSupabase(parsed, d);
+      }
+    }
+
+    // Sales profile
+    const {data:sales}=await supa.from('company_sales_profile').select('*')
+      .eq('company_id',company.id).order('created_at',{ascending:false}).limit(1);
+    if(sales?.[0]&&!S.salesProfile){
+      const sp=sales[0];
+      S.salesProfile={
+        answers:[sp.q1_how_clients_find_you||'',sp.q2_when_interest_happens||'',sp.q3_talk_to_all_or_lose_some||'',sp.q4_where_leads_are_recorded||'',sp.q5_followup_process||'',sp.q6_main_questions_before_buying||'',sp.q7_why_people_drop||'',sp.q8_sales_frequency_visibility||'',sp.q9_sales_process_or_improvise||'',sp.q10_hardest_part_of_selling||''],
+        summary:sp.summary||'',
+        weaknesses:sp.main_gap?[sp.main_gap]:[],
+        actions:sp.recommendations||[]
+      };
+    }
+
+    // Transações financeiras
+    const {data:txns}=await supa.from('financial_transactions').select('*')
+      .eq('company_id',company.id).order('created_at',{ascending:false});
+    if(txns?.length&&!S.financial.transactions.length){
+      S.financial.transactions=txns.map(t=>({
+        id:t.id, tipo:t.tipo, desc:t.descricao||'',
+        valor:parseFloat(t.valor)||0, cat:t.categoria||'',
+        clienteId:t.tipo==='receita'?t.contact_id:null,
+        fornecedorId:t.tipo==='despesa'?t.contact_id:null,
+        produtoId:t.product_id||null,
+        data:t.data_lancamento?new Date(t.data_lancamento).toLocaleDateString('pt-BR'):'',
+        dataISO:t.data_lancamento||''
+      }));
+    }
+
+    // Contacts
+    const {data:cts}=await supa.from('contacts').select('*').eq('company_id',company.id);
+    if(cts?.length&&!S.contacts.length) S.contacts=cts.map(c=>({id:c.id,nome:c.nome,contato:c.contato||'',tipo:c.tipo}));
+
+    // Products
+    const {data:prods}=await supa.from('products').select('*').eq('company_id',company.id);
+    if(prods?.length&&!S.products.length) S.products=prods.map(p=>({id:p.id,nome:p.nome,preco:parseFloat(p.preco)||0,cat:p.categoria||''}));
+
+    // Categories
+    const {data:cats}=await supa.from('financial_categories').select('*').eq('company_id',company.id);
+    if(cats?.length){
+      cats.filter(c=>c.tipo==='receita').forEach(c=>{ if(!S.categories.receita.includes(c.nome)) S.categories.receita.push(c.nome); });
+      cats.filter(c=>c.tipo==='despesa').forEach(c=>{ if(!S.categories.despesa.includes(c.nome)) S.categories.despesa.push(c.nome); });
+    }
+
+    // Evo history
+    const {data:evo}=await supa.from('company_evo_history').select('*')
+      .eq('company_id',company.id).order('year').order('month');
+    if(evo?.length) S.evoHistory=evo.map(e=>({month:e.month,year:e.year,score:e.score,label:e.label}));
+
+    save();
+    toast('Dados carregados do Supabase.','success');
+  }catch(e){ console.error('hydrateFromSupabase:',e); }
+}
+
+/* ── Reconstrói diag local a partir do JSON do Supabase ── */
+function buildDiagFromSupabase(parsed, dbRow){
+  // parsed pode ser o resultado do Gemini (status_empresa, visao_geral, ...)
+  // ou um diag local salvo anteriormente
+  const sc=dbRow.maturity_score||50;
+  if(parsed.visao_geral){
+    // É resultado do Gemini — adapta para o formato interno
+    return {
+      overview:parsed.visao_geral||'',
+      gaps:parsed.principais_gargalos||[],
+      direction:parsed.diagnostico_estrategico||'',
+      swot:[
+        `Forças: ${(parsed.swot?.forcas||[]).join('. ')}`,
+        `Fraquezas: ${(parsed.swot?.fraquezas||[]).join('. ')}`,
+        `Oportunidades: ${(parsed.swot?.oportunidades||[]).join('. ')}`,
+        `Ameaças: ${(parsed.swot?.ameacas||[]).join('. ')}`
+      ],
+      attention:parsed.conclusao_estrategica||'',
+      sc,
+      summary:parsed.status_empresa||'',
+      priorities:parsed.plano_acao_inicial||['Direção estratégica','Posicionamento','Processo comercial','Clareza de oferta'],
+      nextMove:parsed.oportunidades_crescimento||'',
+      marketing:{
+        core:parsed.diagnostico_estrategico||'',
+        focus:parsed.principais_gargalos||[],
+        steps:parsed.plano_acao_inicial?.slice(0,3)||[]
+      }
+    };
+  }
+  // É um diag local — retorna como está
+  return {...parsed, sc};
+}
+
+/* ═══════════════ NAVIGATION ═══════════════ */
+function hidePages(){['diagnostico','resultado','auth','dashboard'].forEach(p=>$(`page-${p}`).classList.remove('active'));}
+function goToStep(s){
+  S.step=s; hidePages();
+  const labels={diagnostico:'Diagnóstico estratégico',resultado:'Leitura estratégica',auth:'Acesso',dashboard:'Painel da empresa'};
+  $('brandSub').textContent=labels[s]||'DigitalMind';
+  // Nav visibility
+  $('navDiag').style.display=S.isLogged?'none':'inline-flex';
+  $('navArea').style.display='inline-flex';
+  $('navDiag').classList.toggle('active',s==='diagnostico'||s==='resultado');
+  $('navArea').classList.toggle('active',s==='auth'||s==='dashboard');
+  if(s==='diagnostico') $('page-diagnostico').classList.add('active');
+  if(s==='resultado') $('page-resultado').classList.add('active');
+  if(s==='auth') $('page-auth').classList.add('active');
+  if(s==='dashboard'&&S.isLogged) $('page-dashboard').classList.add('active');
+  renderFormStep(); renderAuthMode(); renderActiveModule();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ═══════════════ FORM ═══════════════ */
+const FORM_STEPS=[
+  {tag:'Etapa 1',title:'Vamos começar com o básico',sub:'Preencha as informações iniciais para entender sua empresa.',
+   fields:[{k:'companyName',lbl:'Nome da empresa',t:'input',ph:'Ex.: DigitalMind'},{k:'segment',lbl:'Segmento',t:'input',ph:'Ex.: marketing, varejo...'},{k:'marketTime',lbl:'Tempo de mercado',t:'input',ph:'Ex.: 2 anos'},{k:'city',lbl:'Cidade / região',t:'input',ph:'Ex.: São Paulo / SP'}]},
+  {tag:'Etapa 2',title:'Como a empresa vende hoje?',sub:'Quero entender sua forma atual de operação e venda.',
+   fields:[{k:'salesModel',lbl:'Como sua empresa vende hoje?',t:'textarea',ph:'Ex.: indicações, Instagram, vendedor...'},{k:'leadSource',lbl:'De onde vêm seus clientes?',t:'textarea',ph:'Ex.: indicação, tráfego, parceria...'}]},
+  {tag:'Etapa 3',title:'Como está sua presença digital?',sub:'O objetivo é perceber o nível de posicionamento e comunicação atual.',
+   fields:[{k:'digitalPresence',lbl:'Como está sua presença digital hoje?',t:'textarea',ph:'Ex.: redes paradas, pouco alcance...'}]},
+  {tag:'Etapa 4',title:'Onde você sente que está travado?',sub:'Normalmente é aqui que o gargalo real começa a aparecer.',
+   fields:[{k:'mainDifficulty',lbl:'Qual é a maior dificuldade hoje?',t:'textarea',ph:'Ex.: vender mais, organizar, posicionar melhor...'},{k:'failedAttempt',lbl:'O que você já tentou e não funcionou?',t:'textarea',ph:'Ex.: postar mais, impulsionar...'}]},
+  {tag:'Etapa 5',title:'Agora, olhando para frente',sub:'Entender o objetivo ajuda a avaliar se a estrutura atual suporta o crescimento.',
+   fields:[{k:'mainGoal',lbl:'Qual é seu principal objetivo hoje?',t:'textarea',ph:'Ex.: estruturar e vender mais'}]},
+  {tag:'Etapa 6',title:'O que seria um avanço real?',sub:'Última etapa. Quero entender o que, para você, seria evolução prática.',
+   fields:[{k:'desiredAdvance',lbl:'O que precisa mudar para sua empresa avançar?',t:'textarea',ph:'Ex.: mais clareza, mais processo, mais vendas...'}]}
+];
+function renderStepDots(){
+  $('stepDots').innerHTML='';
+  FORM_STEPS.forEach((_,i)=>{const d=document.createElement('div');d.className='step-dot '+(i<S.formStep?'done':i===S.formStep?'active':'future');$('stepDots').appendChild(d);});
+}
+function renderFormStep(){
+  const step=FORM_STEPS[S.formStep]; const n=S.formStep+1;
+  $('progLabel').textContent=`Etapa ${n} de ${FORM_STEPS.length}`;
+  $('progBar').style.width=`${(n/FORM_STEPS.length)*100}%`;
+  $('stepTag').textContent=step.tag; $('stepTitle').textContent=step.title; $('stepSub').textContent=step.sub;
+  $('prevBtn').style.visibility=S.formStep===0?'hidden':'visible';
+  $('nextBtn').textContent=S.formStep===FORM_STEPS.length-1?'Gerar leitura estratégica →':'Próxima etapa →';
+  renderStepDots();
+  const gc=step.fields.length>1&&step.fields.every(f=>f.t==='input')?'g2':'g1';
+  $('stepFields').className=gc; $('stepFields').innerHTML='';
+  step.fields.forEach(f=>{
+    const w=document.createElement('div'); w.className='field';
+    const lbl=document.createElement('label'); lbl.setAttribute('for',f.k); lbl.textContent=f.lbl; w.appendChild(lbl);
+    let inp=document.createElement(f.t==='textarea'?'textarea':'input');
+    if(f.t!=='textarea') inp.type='text';
+    inp.id=f.k; inp.placeholder=f.ph||''; inp.value=S.formData[f.k]||'';
+    inp.addEventListener('input',e=>{S.formData[f.k]=e.target.value;});
+    if(f.t==='input') inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('nextBtn').click();}});
+    w.appendChild(inp); $('stepFields').appendChild(w);
+  });
+  setTimeout(()=>{const f=$('stepFields').querySelector('input,textarea');if(f)f.focus();},80);
+}
+function validateStep(){
+  const step=FORM_STEPS[S.formStep];
+  const miss=step.fields.find(f=>!String(S.formData[f.k]||'').trim());
+  if(miss){$('stepHint').textContent=`Preencha: ${miss.lbl}.`;$('stepHint').style.color='var(--danger)';return false;}
+  $('stepHint').textContent='Tudo certo!';$('stepHint').style.color='var(--success)';return true;
+}
+
+/* ═══════════════ DIAGNÓSTICO LOGIC ═══════════════ */
+function computeScore(d){
+  let s=68;const dig=(d.digitalPresence||'').toLowerCase(),dif=(d.mainDifficulty||'').toLowerCase(),sal=(d.salesModel||'').toLowerCase();
+  if(dig.includes('parad')||dig.includes('sem'))s-=8;if(dif.includes('vender'))s-=6;if(dif.includes('organ'))s-=4;if(sal.includes('indica'))s-=3;
+  if((d.mainGoal||'').length>30)s+=3;if((d.desiredAdvance||'').length>30)s+=3;return Math.max(42,Math.min(84,s));
+}
+const PRIORITY_DATA={
+  'Direção estratégica':{icon:'🧭',desc:'Sua empresa precisa de um norte claro antes de escalar qualquer canal ou ação.',recs:['Defina onde a empresa quer estar em 12 meses — seja específico.','Escolha 2 a 3 frentes prioritárias e pare de dispersar energia.','Crie uma cadência mensal de revisão de metas e resultados.','Documente a visão em uma página e compartilhe com o time.']},
+  'Posicionamento':{icon:'📌',desc:'Quem é seu cliente ideal? O que você resolve que outros não resolvem? Clareza aqui multiplica resultados.',recs:['Defina o ICP (Ideal Customer Profile) com nome, dor principal e contexto.','Crie uma proposta de valor que responda: por que você e não o concorrente?','Revisite a comunicação em todos os canais com base no novo posicionamento.','Teste mensagens diferentes com clientes atuais e meça qual ressoa mais.']},
+  'Processo comercial':{icon:'🔄',desc:'Vendas previsíveis começam com um processo documentado e repetível.',recs:['Mapeie cada etapa do funil: contato → qualificação → proposta → follow-up → fechamento.','Crie um script simples de primeiro contato com o cliente.','Defina um CRM básico (pode ser uma planilha) para registrar todos os leads.','Estabeleça um ritmo de follow-up: 24h, 72h, 7 dias após o primeiro contato.']},
+  'Clareza de oferta':{icon:'💡',desc:'Seus produtos e serviços precisam ter nome, escopo e preço definidos. O cliente precisa entender o que está comprando.',recs:['Liste todos os seus produtos/serviços com preço, prazo e entregável claro.','Crie uma proposta comercial padrão que você possa enviar em minutos.','Elimine serviços pouco rentáveis ou confusos para o cliente.','Teste a oferta com 3 clientes atuais: eles conseguem explicar o que você faz?']}
+};
+function buildDiag(data){
+  const cn=data.companyName||'Sua empresa',seg=data.segment||'seu mercado',dif=data.mainDifficulty||'crescer com consistência',dig=data.digitalPresence||'presença digital sem clareza',goal=data.mainGoal||'evoluir com mais estrutura',adv=data.desiredAdvance||'mais direção e organização',sc=computeScore(data);
+  const overview=`${cn} demonstra potencial de crescimento, mas ainda opera com sinais de desalinhamento entre esforço, estrutura e direção. Hoje, a empresa atua em ${seg} e convive com ${dif.toLowerCase()}. A leitura inicial mostra que parte da energia investida pode não estar se convertendo em previsibilidade e avanço consistente.`;
+  const gaps=['Falta de clareza estratégica suficiente para sustentar crescimento consistente.','Comunicação e presença ainda sem direção forte para gerar valor contínuo.','Estrutura comercial com sinais de dependência maior de esforço do que de método.'];
+  if(dig.toLowerCase().includes('sem')||dig.toLowerCase().includes('parad'))gaps.push('Presença digital fragilizada ou sem constância estratégica.');
+  const direction=`O próximo passo não deveria ser apenas divulgar mais. Antes disso, o mais importante é organizar o cenário, definir prioridade e construir uma base estratégica compatível com o objetivo de ${goal.toLowerCase()}. O avanço passa por ${adv.toLowerCase()}, com mais método e menos improviso.`;
+  const swot=['Forças: conhecimento prático do próprio negócio, operação real e intenção de crescimento.','Fraquezas: baixa clareza estratégica, possível dependência de improviso e pouca previsibilidade comercial.','Oportunidades: fortalecer posicionamento, organizar processo comercial e estruturar comunicação.','Ameaças: continuar aumentando esforço sem avanço proporcional, perder valor percebido.'];
+  const attention='Se a estrutura continuar como está, a tendência é cobrar mais resultado da execução sem antes corrigir a direção. O problema não parece ser falta de potencial — é esse potencial ainda não estar suficientemente organizado.';
+  const summary=`${cn} tem base para evoluir, mas ainda depende demais de esforço e ajustes pontuais. A próxima fase precisa focar em clareza estratégica, posicionamento e processo mais previsível.`;
+  const priorities=['Direção estratégica','Posicionamento','Processo comercial','Clareza de oferta'];
+  const nextMove='Transformar a leitura inicial em plano aplicado: revisar cenário, priorizar gargalos e organizar uma sequência mais inteligente de execução.';
+  const marketing={core:'Hoje o marketing precisa parar de compensar falta de estrutura e começar a amplificar uma proposta mais clara, coerente e percebida como valiosa.',focus:['Melhorar posicionamento para aumentar valor percebido.','Criar mensagem clara sobre o que a empresa faz e para quem.','Usar conteúdo como construção de confiança, não apenas presença.'],steps:['Definir promessa central da empresa.','Organizar pilares de conteúdo alinhados ao comercial.','Corrigir comunicação que pode estar genérica ou difusa.']};
+  return{overview,gaps,direction,swot,attention,sc,summary,priorities,nextMove,marketing};
+}
+
+/* ═══════════════ RENDER RESULTADO ═══════════════ */
+function renderResultado(){
+  const d=S.diag;if(!d)return;
+  $('rOverview').textContent=d.overview;
+  $('rGaps').innerHTML=d.gaps.map(g=>`<li>${g}</li>`).join('');
+  $('rDirection').textContent=d.direction;
+  $('rAttention').textContent=d.attention;
+  $('resultScore').textContent=`${d.sc}%`;
+  $('resultBadge').style.setProperty('--pct',d.sc);
+  const sl=[{l:'Forças',c:'f'},{l:'Fraquezas',c:'fr'},{l:'Oportunidades',c:'o'},{l:'Ameaças',c:'a'}];
+  $('rSwot').innerHTML=d.swot.map((t,i)=>{const p=t.split(':');const b=p.length>1?p.slice(1).join(':').trim():t;const{l,c}=sl[i]||{l:'',c:''};return`<div class="swot-q ${c}"><div class="swot-q-lbl">${l}</div><div class="swot-q-txt">${b}</div></div>`;}).join('');
+}
+
+/* ═══════════════ RENDER DASHBOARD ═══════════════ */
+function renderDashboard(){
+  const d=S.diag;
+  $('dEmpty').classList.toggle('hidden',Boolean(d));
+  if(!d){['mMaturidade','mPrioridades','mDiag','dScore'].forEach(id=>{const el=$(id);if(el)el.textContent='–';});return;}
+  $('mMaturidade').textContent=`${d.sc}%`;
+  $('mPrioridades').textContent=String(d.priorities.length);
+  $('mDiag').textContent='Pronto';$('mDiagNote').textContent='Diagnóstico concluído';
+  $('mTrend').textContent=d.sc>=70?'▲ Boa base estrutural':'● Requer estruturação';
+  $('mTrend').className=`metric-trend ${d.sc>=70?'up':'neutral'}`;
+  $('dOverview').textContent=d.overview;
+  $('dSummary').textContent=d.summary;
+  $('dScore').textContent=`${d.sc}%`;
+  $('dMatText').textContent=d.nextMove;
+  $('scoreRing').style.setProperty('--score',d.sc);
+  $('dPriorities').innerHTML=d.priorities.map(p=>`<span class="pill" onclick="togglePriority('${p}')">${p}</span>`).join('');
+  $('mktCore').textContent=d.marketing.core;
+  $('mktFocus').innerHTML=d.marketing.focus.map(i=>`<li>${i}</li>`).join('');
+  $('mktSteps').innerHTML=d.marketing.steps.map(i=>`<li>${i}</li>`).join('');
+  $('evoRing').style.setProperty('--score',d.sc);
+  $('evoScore').textContent=`${d.sc}%`;
+  $('evoText').textContent=`Maturidade em ${d.sc}%. O avanço depende de clareza, processo e integração entre os módulos.`;
+  // Push to evoHistory if not already there for current month
+  pushEvoHistory(d.sc);
+  renderEvo();
+  renderSalesState();
+  save();
+}
+
+/* ── Priority toggle ── */
+let activePriority=null;
+function togglePriority(p){
+  const detail=$('priorityDetail');
+  if(activePriority===p&&detail.classList.contains('show')){
+    detail.classList.remove('show'); activePriority=null;
+    document.querySelectorAll('.pill').forEach(el=>el.classList.remove('active-pill')); return;
+  }
+  activePriority=p;
+  document.querySelectorAll('.pill').forEach(el=>el.classList.toggle('active-pill',el.textContent.trim()===p));
+  const pd=PRIORITY_DATA[p]||{icon:'📌',desc:'',recs:[]};
+  detail.innerHTML=`<h4>${pd.icon} ${p}</h4><p>${pd.desc}</p>${pd.recs.length?`<ul>${pd.recs.map(r=>`<li>${r}</li>`).join('')}</ul>`:''}`;
+  detail.classList.add('show');
+}
+
+/* ── Metric modal ── */
+function openMetric(type){
+  const d=S.diag;
+  if(!d&&type!=='modulos'){toast('Complete o diagnóstico primeiro.','info');return;}
+  const configs={
+    maturidade:{title:`Maturidade Digital — ${d.sc}%`,sub:'Índice calculado com base nas respostas do diagnóstico estratégico.',content:`<div style="text-align:center"><div class="score-ring" style="--score:${d.sc};margin:0 auto 14px"><span>${d.sc}%</span></div></div><p style="font-size:.9rem;color:var(--muted);line-height:1.65">${d.nextMove}</p><div class="sep"></div><h4 style="margin-bottom:10px;font-size:.9rem">Gargalos principais</h4><ul style="padding-left:14px">${d.gaps.map(g=>`<li style="font-size:.86rem;color:var(--muted);line-height:1.65;margin-bottom:5px">${g}</li>`).join('')}</ul>`},
+    prioridades:{title:'Prioridades Identificadas',sub:'Clique em qualquer prioridade para ver recomendações detalhadas.',content:`<div style="display:flex;flex-direction:column;gap:10px">${d.priorities.map(p=>{const pd=PRIORITY_DATA[p]||{icon:'📌',desc:'',recs:[]};return`<div style="padding:14px;border-radius:14px;background:rgba(75,140,255,.06);border:1px solid rgba(75,140,255,.16)"><strong>${pd.icon} ${p}</strong><p style="font-size:.84rem;color:var(--muted);margin-top:6px;line-height:1.55">${pd.desc}</p></div>`;}).join('')}</div>`},
+    modulos:{title:'Módulos Ativos',sub:'4 módulos disponíveis na Área da Empresa.',content:`<div style="display:flex;flex-direction:column;gap:9px">${[{icon:'🎯',n:'Marketing',d:'Agente com contexto real do diagnóstico.'},{icon:'🛒',n:'Vendas',d:'Diagnóstico passo a passo + agente comercial.'},{icon:'💰',n:'Financeiro',d:'Lançamentos, gráficos, clientes, produtos e conciliação.'},{icon:'📈',n:'Evolução',d:'Score, histórico por período e metas de avanço.'}].map(m=>`<div style="display:flex;gap:11px;padding:12px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid var(--border)"><span style="font-size:1.3rem">${m.icon}</span><div><strong>${m.n}</strong><p style="font-size:.82rem;color:var(--muted)">${m.d}</p></div></div>`).join('')}</div>`},
+    diagnostico:{title:'Diagnóstico Estratégico',sub:'Leitura inicial completa da empresa.',content:`<p style="font-size:.9rem;color:var(--muted);line-height:1.65;margin-bottom:14px">${d.overview}</p><p style="font-size:.9rem;line-height:1.65">${d.direction}</p>`}
+  };
+  const c=configs[type]; if(!c) return;
+  $('mmTitle').textContent=c.title; $('mmSub').textContent=c.sub; $('mmContent').innerHTML=c.content;
+  openModal('metricModal');
+}
+
+/* ═══════════════ SALES ═══════════════ */
+const SALES_QS=['Como os clientes descobrem você hoje?','Quando alguém demonstra interesse, o que você faz?','Você costuma falar com todos os interessados ou perde alguns no caminho?','Você anota em algum lugar quem pediu informação?','Você costuma voltar a falar com quem não comprou?','O que as pessoas mais perguntam antes de comprar?','O que faz alguém desistir de comprar com você?','Você sabe dizer quantas vendas faz por semana ou mês?','Você tenta vender sempre do mesmo jeito ou vai improvisando?','Hoje, qual é a parte mais difícil de vender?'];
+function renderSalesDots(){
+  $('sStepDots').innerHTML='';
+  SALES_QS.forEach((_,i)=>{const d=document.createElement('div');d.className='sdot '+(i<S.salesStep?'done':i===S.salesStep?'cur':'');$('sStepDots').appendChild(d);});
+}
+function renderSalesStep(){
+  const n=S.salesStep; const t=SALES_QS.length; const pct=((n+1)/t)*100;
+  $('sProgLabel').textContent=`Pergunta ${n+1} de ${t}`;$('sProgBar').style.width=`${pct}%`;
+  $('sQLabel').textContent=`Pergunta ${n+1} de ${t}`;$('sQTitle').textContent=SALES_QS[n];
+  $('sQTextarea').value=S.salesAnswers[n]||'';
+  $('sPrevBtn').style.visibility=n===0?'hidden':'visible';
+  $('sNextBtn').textContent=n===t-1?'Salvar diagnóstico ✓':'Próxima →';
+  $('sHint').textContent=n===t-1?'Última pergunta. Salve para liberar o agente.':'Responda e avance para a próxima.';
+  renderSalesDots(); setTimeout(()=>$('sQTextarea').focus(),80);
+}
+function analyzeSales(answers){
+  const j=answers.join(' ').toLowerCase(); const w=[],a=[];
+  if(j.includes('indica'))w.push('Dependência forte de indicação como principal origem de novos clientes.');
+  if(j.includes('demora')||j.includes('depois'))w.push('Risco de perder interesse por demora no primeiro contato.');
+  if(j.includes('memória')||j.includes('whatsapp')||j.includes('caderno'))w.push('Registro comercial ainda frágil e pouco previsível.');
+  if(j.includes('não')||j.includes('nao')||j.includes('somem'))w.push('Follow-up inconsistente com quem demonstrou interesse.');
+  if(j.includes('improvis'))w.push('Processo comercial sem método claro e repetível.');
+  if(!w.length)w.push('Processo comercial ainda precisa de mais clareza e padronização.');
+  a.push('Criar um padrão simples de resposta para novos interessados.');
+  a.push('Registrar todo lead em um único lugar.');
+  a.push('Definir uma rotina mínima de follow-up.');
+  if(j.includes('preço')||j.includes('preco'))a.push('Trabalhar melhor valor percebido para reduzir perda por preço.');
+  return{answers,weaknesses:w,actions:a,summary:'A empresa demonstra esforço comercial real, mas ainda opera com sinais de perda de lead, resposta inconsistente e pouca padronização do processo de venda.'};
+}
+function renderSalesState(){
+  const has=Boolean(S.salesProfile);
+  $('salesStepWrap').classList.toggle('hidden',has);
+  $('salesDoneWrap').classList.toggle('hidden',!has);
+  const badge=$('vBadge'); if(badge){badge.textContent=has?'Salvo':'Pendente';badge.className='sb-badge'+(has?'':' pending');}
+  if(!has){renderSalesStep();return;}
+  $('sSummary').textContent=S.salesProfile.summary;
+  $('sWeaknesses').innerHTML=S.salesProfile.weaknesses.map(i=>`<li>${i}</li>`).join('');
+  $('sActions').innerHTML=S.salesProfile.actions.map(i=>`<li>${i}</li>`).join('');
+}
+
+/* ═══════════════ FINANCEIRO ═══════════════ */
+function switchFinTab(id){
+  S.activeFinTab=id;
+  document.querySelectorAll('.fin-tab').forEach(t=>t.classList.toggle('active',t.dataset.ftab===id));
+  document.querySelectorAll('.fin-panel').forEach(p=>p.classList.toggle('active',p.id===`ftab-${id}`));
+  if(id==='overview') renderFinOverview();
+  if(id==='receitas') renderTxList('receita');
+  if(id==='despesas') renderTxList('despesa');
+  if(id==='clientes') renderContacts();
+  if(id==='produtos') renderProducts();
+  refreshCatLists();
+}
+
+function refreshCatLists(){
+  ['receita','despesa'].forEach(t=>{
+    const dl=$(t==='receita'?'rCatList':'dCatList'); if(!dl) return;
+    dl.innerHTML=S.categories[t].map(c=>`<option value="${c}">`).join('');
+  });
+  // Also update client/product selects
+  const rc=$('rCliente'); if(rc){rc.innerHTML='<option value="">Selecionar...</option>'+S.contacts.filter(c=>c.tipo==='cliente').map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');}
+  const df=$('dFornecedor'); if(df){df.innerHTML='<option value="">Selecionar...</option>'+S.contacts.filter(c=>c.tipo==='fornecedor').map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');}
+  const rp=$('rProduto'); if(rp){rp.innerHTML='<option value="">Selecionar...</option>'+S.products.map(p=>`<option value="${p.id}">${p.nome} (${fmtBRL(p.preco)})</option>`).join('');}
+  // concil cat selects
+  document.querySelectorAll('.concil-cat-sel').forEach(sel=>{
+    const cur=sel.value; sel.innerHTML='<option value="">Categoria...</option>'+[...S.categories.receita,...S.categories.despesa].filter((v,i,a)=>a.indexOf(v)===i).map(c=>`<option value="${c}">${c}</option>`).join('');
+    if(cur)sel.value=cur;
+  });
+}
+
+function saveCat(tipo){
+  const inp=$(tipo==='receita'?'rCatInput':'dCatInput'); if(!inp) return;
+  const v=inp.value.trim(); if(!v){toast('Digite uma categoria.','error');return;}
+  if(!S.categories[tipo].includes(v)){
+    S.categories[tipo].push(v); save();
+    if(supa&&S.user) persistCategory(v,tipo);
+    toast(`Categoria "${v}" salva!`,'success'); refreshCatLists();
+  } else toast('Categoria já existe.','info');
+}
+
+async function addTx(tipo){
+  const desc=$(tipo==='receita'?'rDesc':'dDesc').value.trim();
+  const valor=parseFloat($(tipo==='receita'?'rValor':'dValor').value);
+  const cat=$(tipo==='receita'?'rCatInput':'dCatInput').value.trim();
+  if(!desc){toast('Informe a descrição.','error');return;}
+  if(!valor||valor<=0){toast('Informe um valor válido.','error');return;}
+  const clienteId=tipo==='receita'?($('rCliente').value||null):null;
+  const fornecedorId=tipo==='despesa'?($('dFornecedor').value||null):null;
+  const produtoId=tipo==='receita'?($('rProduto')?.value||null):null;
+  const now=new Date();
+  const dataISO=now.toISOString().split('T')[0];
+  const data=`${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
+  const tx={id:uuid(),tipo,desc,valor,cat,clienteId,fornecedorId,produtoId,data,dataISO};
+  S.financial.transactions.push(tx);
+  if(cat&&!S.categories[tipo].includes(cat)){
+    S.categories[tipo].push(cat);
+    if(supa&&S.user) persistCategory(cat,tipo);
+  }
+  save();
+  if(supa&&S.user) await persistTx(tx);
+  renderFinOverview(); renderTxList(tipo); refreshCatLists();
+  $(tipo==='receita'?'rDesc':'dDesc').value='';
+  $(tipo==='receita'?'rValor':'dValor').value='';
+  $(tipo==='receita'?'rCatInput':'dCatInput').value='';
+  toast(`${tipo==='receita'?'Receita':'Despesa'} adicionada!`,'success');
+}
+
+function removeTx(id){
+  S.financial.transactions=S.financial.transactions.filter(t=>t.id!==id);
+  save(); renderFinOverview(); renderTxList('receita'); renderTxList('despesa');
+  if($('ftab-overview').classList.contains('active')) renderFinOverview();
+}
+
+function renderTxList(tipo){
+  const listId=tipo==='receita'?'receitaList':'despesaList'; const el=$(listId); if(!el) return;
+  const items=S.financial.transactions.filter(t=>t.tipo===tipo);
+  if(!items.length){el.innerHTML='<div class="empty-state" style="padding:14px"><p>Nenhum lançamento ainda.</p></div>';return;}
+  el.innerHTML=items.slice().reverse().map(t=>{
+    const contact=t.clienteId?S.contacts.find(c=>c.id===t.clienteId):t.fornecedorId?S.contacts.find(c=>c.id===t.fornecedorId):null;
+    const prod=t.produtoId?S.products.find(p=>p.id===t.produtoId):null;
+    return`<div class="fin-item"><div class="fi-left"><div class="fi-dot ${tipo==='receita'?'green':'red'}"></div><span class="fi-desc">${t.desc}</span><span class="fi-meta">${t.cat||''}${contact?` · ${contact.nome}`:''}${prod?` · ${prod.nome}`:''}</span><span class="fi-meta">${t.data||''}</span></div><div style="display:flex;align-items:center;gap:8px"><span class="fi-val ${tipo==='receita'?'green':'red'}">${fmtBRL(t.valor)}</span><button class="btn-danger-xs" onclick="removeTx('${t.id}')">✕</button></div></div>`;
+  }).join('');
+}
+
+function renderFinOverview(){
+  const txns=S.financial.transactions;
+  const rec=txns.filter(t=>t.tipo==='receita'); const dep=txns.filter(t=>t.tipo==='despesa');
+  const tr=rec.reduce((a,t)=>a+t.valor,0); const td=dep.reduce((a,t)=>a+t.valor,0);
+  const saldo=tr-td; const mg=tr>0?((saldo/tr)*100):0;
+  $('fkReceitas').textContent=fmtBRL(tr); $('fkDespesas').textContent=fmtBRL(td);
+  $('fkSaldo').textContent=fmtBRL(saldo); $('fkSaldo').className='fk-val '+(saldo>=0?'blue':'red');
+  $('fkDRE').textContent=`${mg.toFixed(1)}%`; $('fkDRE').className='fk-val '+(mg>=0?'amber':'red');
+  $('fkDREHint').textContent=mg>=0?`Margem ${mg.toFixed(1)}%`:'Margem negativa';
+  $('fkRCount').textContent=`${rec.length} lançamento${rec.length!==1?'s':''}`;
+  $('fkDCount').textContent=`${dep.length} lançamento${dep.length!==1?'s':''}`;
+  renderFluxoChart(tr,td); renderCompoChart(dep);
+  renderAllTx(txns);
+}
+
+function openSaldoDetail(){
+  const txns=S.financial.transactions;
+  const tr=txns.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
+  const td=txns.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
+  const saldo=tr-td; const p=$('saldoPanel'); const c=$('drePanel');
+  c.classList.add('hidden');
+  if(!p.classList.contains('hidden')){p.classList.add('hidden');return;}
+  $('saldoContent').innerHTML=`
+    <div class="dre-line"><span>Total de receitas</span><span style="color:var(--success)">${fmtBRL(tr)}</span></div>
+    <div class="dre-line"><span>Total de despesas</span><span style="color:var(--danger)">−${fmtBRL(td)}</span></div>
+    <div class="sep" style="margin:10px 0"></div>
+    <div class="dre-line total"><span>Saldo atual</span><span class="${saldo>=0?'pos':'neg'}">${fmtBRL(saldo)}</span></div>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:10px">Saldo = Receitas − Despesas. Atualize regularmente seus lançamentos para manter a leitura correta.</p>`;
+  p.classList.remove('hidden');
+}
+
+function openDREDetail(){
+  const txns=S.financial.transactions;
+  const tr=txns.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
+  const td=txns.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
+  const saldo=tr-td; const mg=tr>0?((saldo/tr)*100):0;
+  const depByCat={};
+  txns.filter(t=>t.tipo==='despesa').forEach(t=>{const k=t.cat||'Outros';depByCat[k]=(depByCat[k]||0)+t.valor;});
+  const catLines=Object.entries(depByCat).map(([k,v])=>`<div class="dre-line" style="padding-left:14px"><span style="color:var(--muted)">${k}</span><span style="color:var(--danger)">−${fmtBRL(v)}</span></div>`).join('');
+  const p=$('drePanel'); const s=$('saldoPanel');
+  s.classList.add('hidden');
+  if(!p.classList.contains('hidden')){p.classList.add('hidden');return;}
+  $('dreContent').innerHTML=`
+    <div class="dre-line"><span><strong>Receita Bruta</strong></span><span style="color:var(--success)">${fmtBRL(tr)}</span></div>
+    <div class="dre-line neg"><span>( − ) Despesas Totais</span><span>−${fmtBRL(td)}</span></div>
+    ${catLines}
+    <div class="sep" style="margin:10px 0"></div>
+    <div class="dre-line total ${saldo>=0?'pos':'neg'}"><span>Resultado Líquido</span><span>${fmtBRL(saldo)}</span></div>
+    <div class="dre-line"><span style="color:var(--muted)">Margem líquida</span><span class="${mg>=0?'pos':'neg'}">${mg.toFixed(1)}%</span></div>`;
+  p.classList.remove('hidden');
+}
+
+function renderFluxoChart(tr,td){
+  const has=tr>0||td>0;
+  $('fceFluxo').style.display=has?'none':'flex'; $('fluxoChart').style.display=has?'block':'none';
+  if(!has)return;
+  if(fluxoChart)fluxoChart.destroy();
+  fluxoChart=new Chart($('fluxoChart'),{type:'bar',data:{labels:['Receitas','Despesas','Saldo'],datasets:[{data:[tr,td,Math.max(0,tr-td)],backgroundColor:['rgba(34,197,94,.7)','rgba(239,68,68,.7)','rgba(75,140,255,.7)'],borderRadius:7,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmtBRL(ctx.raw)}}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4'}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',callback:v=>fmtBRL(v)}}}}});
+}
+function renderCompoChart(dep){
+  const has=dep.length>0;
+  $('fceCompo').style.display=has?'none':'flex'; $('compoChart').style.display=has?'block':'none';
+  if(!has)return;
+  const bc={};dep.forEach(d=>{const k=d.cat||'Outros';bc[k]=(bc[k]||0)+d.valor;});
+  const labels=Object.keys(bc),values=Object.values(bc);
+  const colors=['rgba(239,68,68,.7)','rgba(245,158,11,.7)','rgba(168,85,247,.7)','rgba(75,140,255,.7)','rgba(6,182,212,.7)','rgba(34,197,94,.7)','rgba(156,163,175,.7)'];
+  if(compoChart)compoChart.destroy();
+  compoChart=new Chart($('compoChart'),{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:colors.slice(0,labels.length),borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8fa8c4',font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtBRL(ctx.raw)}`}}}}});
+}
+function renderAllTx(txns){
+  $('allTxPanel').style.display=txns.length?'block':'none'; if(!txns.length)return;
+  $('allTxList').innerHTML=txns.slice().reverse().map(t=>{
+    const contact=t.clienteId?S.contacts.find(c=>c.id===t.clienteId):t.fornecedorId?S.contacts.find(c=>c.id===t.fornecedorId):null;
+    return`<div class="fin-item"><div class="fi-left"><div class="fi-dot ${t.tipo==='receita'?'green':'red'}"></div><span class="fi-desc">${t.desc}</span><span class="fi-meta">${t.cat||''}${contact?` · ${contact.nome}`:''} · ${t.data||''}</span></div><div style="display:flex;align-items:center;gap:8px"><span class="fi-val ${t.tipo==='receita'?'green':'red'}">${t.tipo==='receita'?'+':'-'}${fmtBRL(t.valor)}</span><button class="btn-danger-xs" onclick="removeTx('${t.id}')">✕</button></div></div>`;
+  }).join('');
+}
+
+/* Contacts */
+async function addContact(){
+  const nome=$('cNome').value.trim(); const contato=$('cContato').value.trim(); const tipo=$('cTipo').value;
+  if(!nome){toast('Informe o nome.','error');return;}
+  const c={id:uuid(),nome,contato,tipo};
+  if(supa&&S.user){
+    const supaId=await persistContact(c); c.id=supaId;
+  }
+  S.contacts.push(c); save(); renderContacts(); refreshCatLists();
+  $('cNome').value=''; $('cContato').value='';
+  toast(`${tipo==='cliente'?'Cliente':'Fornecedor'} adicionado!`,'success');
+}
+async function removeContact(id){
+  S.contacts=S.contacts.filter(c=>c.id!==id);
+  if(supa&&S.user) await supa.from('contacts').delete().eq('id',id);
+  save(); renderContacts(); refreshCatLists();
+}
+function renderContacts(){
+  ['cliente','fornecedor'].forEach(tipo=>{
+    const el=$(tipo==='cliente'?'clienteList':'fornecedorList'); if(!el) return;
+    const list=S.contacts.filter(c=>c.tipo===tipo);
+    if(!list.length){el.innerHTML=`<div class="empty-state" style="padding:12px"><p>Nenhum ${tipo} cadastrado.</p></div>`;return;}
+    el.innerHTML=list.map(c=>`<div class="crud-item"><div class="crud-item-left"><span class="crud-item-name">${c.nome}</span><span class="crud-item-sub">${c.contato||'Sem contato'}</span></div><button class="btn-danger-xs" onclick="removeContact('${c.id}')">Remover</button></div>`).join('');
+  });
+}
+
+/* Products */
+async function addProduct(){
+  const nome=$('pNome').value.trim(); const preco=parseFloat($('pPreco').value); const cat=$('pCat').value.trim();
+  if(!nome){toast('Informe o nome.','error');return;}
+  const p={id:uuid(),nome,preco:preco||0,cat};
+  if(supa&&S.user){
+    const supaId=await persistProduct(p); p.id=supaId;
+  }
+  S.products.push(p); save(); renderProducts(); refreshCatLists();
+  $('pNome').value=''; $('pPreco').value=''; $('pCat').value='';
+  toast('Produto adicionado!','success');
+}
+async function removeProduct(id){
+  S.products=S.products.filter(p=>p.id!==id);
+  if(supa&&S.user) await supa.from('products').delete().eq('id',id);
+  save(); renderProducts();
+}
+function renderProducts(){
+  const el=$('produtoList'); if(!el) return;
+  if(!S.products.length){el.innerHTML='<div class="empty-state" style="padding:14px"><p>Nenhum produto cadastrado ainda.</p></div>';return;}
+  el.innerHTML=S.products.map(p=>`<div class="crud-item"><div class="crud-item-left"><span class="crud-item-name">${p.nome}</span><span class="crud-item-sub">${fmtBRL(p.preco)}${p.cat?` · ${p.cat}`:''}</span></div><button class="btn-danger-xs" onclick="removeProduct('${p.id}')">Remover</button></div>`).join('');
+}
+
+/* Conciliação */
+function parseConcilCSV(text){
+  const lines=text.split('\n').filter(l=>l.trim());
+  const rows=[];
+  lines.forEach((line,i)=>{
+    if(i===0&&(line.toLowerCase().includes('data')||line.toLowerCase().includes('historico')||line.toLowerCase().includes('valor'))) return;
+    const parts=line.split(/[;,\t]/);
+    if(parts.length<2) return;
+    const data=parts[0]?.trim()||'';
+    const desc=parts.length>=3?parts[1]?.trim()||'':parts[0]?.trim()||'';
+    const rawVal=parts[parts.length-1]?.trim().replace(/[R$\s]/g,'').replace(',','.')||'0';
+    const valor=parseFloat(rawVal);
+    if(isNaN(valor)||valor===0) return;
+    const tipo=valor>0?'credito':'debito';
+    rows.push({id:uuid(),data,desc,valor:Math.abs(valor),tipo,status:'pendente',cat:'',clienteId:''});
+  });
+  return rows;
+}
+function renderConcilTable(){
+  const el=$('concilBody'); if(!el) return;
+  if(!S.conciliacao.length){el.innerHTML='';return;}
+  el.innerHTML=S.conciliacao.map(r=>`
+    <tr>
+      <td><input type="checkbox" class="concil-check" data-id="${r.id}" ${r.status==='importado'?'disabled checked':''}></td>
+      <td>${r.data}</td>
+      <td>${r.desc}</td>
+      <td class="${r.tipo==='credito'?'fi-val green':'fi-val red'}">${r.tipo==='credito'?'+':'-'}${fmtBRL(r.valor)}</td>
+      <td><select onchange="setConcilTipo('${r.id}',this.value)" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.78rem;font-family:inherit"><option value="credito" ${r.tipo==='credito'?'selected':''}>Receita</option><option value="debito" ${r.tipo==='debito'?'selected':''}>Despesa</option></select></td>
+      <td><div class="concil-row-form"><input type="text" list="rCatList" class="concil-cat-sel" placeholder="Categoria..." value="${r.cat}" onchange="setConcilCat('${r.id}',this.value)" style="padding:4px 9px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.78rem;width:110px"/></div></td>
+      <td><span class="concil-badge ${r.status}">${r.status}</span></td>
+    </tr>`).join('');
+}
+function setConcilTipo(id,v){const r=S.conciliacao.find(x=>x.id===id);if(r)r.tipo=v;}
+function setConcilCat(id,v){const r=S.conciliacao.find(x=>x.id===id);if(r)r.cat=v;}
+function toggleAllConcil(cb){document.querySelectorAll('.concil-check:not([disabled])').forEach(c=>c.checked=cb.checked);}
+function importAllConcil(){
+  const checked=[...document.querySelectorAll('.concil-check:checked')].map(c=>c.dataset.id);
+  let count=0;
+  checked.forEach(id=>{
+    const r=S.conciliacao.find(x=>x.id===id); if(!r||r.status==='importado') return;
+    const tipo=r.tipo==='credito'?'receita':'despesa';
+    const now=new Date(); const data=`${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
+    S.financial.transactions.push({id:uuid(),tipo,desc:r.desc,valor:r.valor,cat:r.cat,clienteId:null,fornecedorId:null,produtoId:null,data:r.data||data});
+    r.status='importado'; count++;
+  });
+  if(!count){toast('Selecione ao menos uma transação.','error');return;}
+  save(); renderConcilTable(); renderFinOverview();
+  toast(`${count} transação(ões) importada(s) com sucesso!`,'success','Conciliação');
+}
+
+/* ═══════════════ EVOLUÇÃO ═══════════════ */
+const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function initEvoPeriods(){
+  const now=new Date(); const sy=$('evoPeriodStart'); const ey=$('evoPeriodEnd'); if(!sy||!ey)return;
+  sy.innerHTML=''; ey.innerHTML='';
+  for(let y=now.getFullYear()-1;y<=now.getFullYear();y++){
+    MONTHS.forEach((m,i)=>{
+      const val=`${i}_${y}`;
+      sy.innerHTML+=`<option value="${val}">${m}/${y}</option>`;
+      ey.innerHTML+=`<option value="${val}">${m}/${y}</option>`;
+    });
+  }
+  ey.value=`${now.getMonth()}_${now.getFullYear()}`;
+  // Set start to 6 months ago
+  const sm=now.getMonth()-5; const sy2=sm<0?now.getFullYear()-1:now.getFullYear(); const sm2=sm<0?12+sm:sm;
+  sy.value=`${sm2}_${sy2}`;
+}
+function pushEvoHistory(score){
+  const now=new Date(); const m=now.getMonth(); const y=now.getFullYear();
+  const exists=S.evoHistory.find(h=>h.month===m&&h.year===y);
+  if(!exists){S.evoHistory.push({month:m,year:y,score,label:'Diagnóstico atualizado'});save();}
+}
+function renderEvo(){
+  const sy=$('evoPeriodStart')?.value; const ey=$('evoPeriodEnd')?.value;
+  let filtered=S.evoHistory;
+  if(sy&&ey){
+    const [sm,syr]=sy.split('_').map(Number); const [em,eyr]=ey.split('_').map(Number);
+    filtered=S.evoHistory.filter(h=>{
+      const hy=h.year; const hm=h.month;
+      const afterStart=(hy>syr)||(hy===syr&&hm>=sm);
+      const beforeEnd=(hy<eyr)||(hy===eyr&&hm<=em);
+      return afterStart&&beforeEnd;
+    });
+  }
+  const tw=$('evoTableWrap'); if(!tw) return;
+  if(!filtered.length){
+    tw.innerHTML='<div class="empty-state"><p>Nenhum dado registrado para o período selecionado.</p></div>';
+    $('evoBars').innerHTML=''; $('evoScore').textContent='–'; return;
+  }
+  const last=filtered[filtered.length-1];
+  $('evoRing').style.setProperty('--score',last.score);
+  $('evoScore').textContent=`${last.score}%`;
+  $('evoText').textContent=`Maturidade em ${last.score}% no período selecionado.`;
+  tw.innerHTML=`<table class="table-lite"><thead><tr><th>Mês</th><th>Score</th><th>Leitura</th></tr></thead><tbody>${filtered.map(h=>`<tr><td>${MONTHS[h.month]}/${h.year}</td><td><strong>${h.score}%</strong></td><td style="color:var(--muted)">${h.label}</td></tr>`).join('')}</tbody></table>`;
+  const max=Math.max(...filtered.map(h=>h.score),100);
+  $('evoBars').innerHTML=filtered.map(h=>`<div class="h-bar-w"><div class="h-bar-val">${h.score}%</div><div class="h-bar" style="height:${Math.round((h.score/max)*58)}px"></div><div class="h-bar-lbl">${MONTHS[h.month]}</div></div>`).join('');
+}
+function resetEvoPeriod(){initEvoPeriods();renderEvo();}
+
+/* ═══════════════ AUTH ═══════════════ */
+function renderAuthMode(){
+  const s=S.authMode==='signup';
+  $('loginTab').classList.toggle('active',!s); $('signupTab').classList.toggle('active',s);
+  $('authBtn').textContent=s?'Criar conta →':'Entrar →';
+}
+
+/* ═══════════════ MODULE NAV ═══════════════ */
+function renderActiveModule(){
+  document.querySelectorAll('.module').forEach(m=>m.classList.remove('active'));
+  document.querySelectorAll('.sb-btn[data-mod]').forEach(b=>b.classList.remove('active'));
+  const am=document.getElementById(`module-${S.activeMod}`); if(am) am.classList.add('active');
+  const ab=document.querySelector(`.sb-btn[data-mod="${S.activeMod}"]`); if(ab) ab.classList.add('active');
+  if(S.activeMod==='financeiro'){renderFinOverview();refreshCatLists();}
+  if(S.activeMod==='evolucao') renderEvo();
+}
+
+/* ═══════════════ CHAT ═══════════════ */
+function addMsg(box,text,role='ai'){const d=document.createElement('div');d.className=`msg ${role}`;d.textContent=text;box.appendChild(d);box.scrollTop=box.scrollHeight;}
+function typing(box,text){
+  const d=document.createElement('div');d.className='msg ai';d.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+  box.appendChild(d);box.scrollTop=box.scrollHeight;
+  setTimeout(()=>{d.remove();addMsg(box,text,'ai');},600+Math.random()*400);
+}
+function mktReply(p){
+  const d=S.diag; if(!d)return'Primeiro conclua o diagnóstico para eu conseguir direcionar seu marketing com mais contexto.';
+  const pl=p.toLowerCase();
+  if(pl.includes('posicion'))return'Seu posicionamento precisa ficar mais claro sobre o que você resolve, para quem resolve e por que sua empresa merece ser escolhida. Hoje a prioridade é clareza antes de escala.';
+  if(pl.includes('conteúdo')||pl.includes('conteudo'))return'O conteúdo precisa sair do genérico e passar a reforçar percepção de valor, prova, bastidor, diferenciais e objeções do cliente.';
+  if(pl.includes('erro'))return'O maior erro hoje é tentar crescer na comunicação sem antes alinhar direção, mensagem e proposta de valor.';
+  return`Pelo diagnóstico, seu marketing deve priorizar ${d.priorities[0].toLowerCase()} e ${d.priorities[1].toLowerCase()}. O próximo movimento é comunicar com mais clareza, menos improviso e mais intenção comercial.`;
+}
+function salesReply(p){
+  if(!S.salesProfile)return'Primeiro salve o diagnóstico de vendas para eu responder com base real no processo comercial.';
+  const pl=p.toLowerCase();
+  if(pl.includes('lead'))return'Hoje o principal é parar de perder lead no caminho. Centralize registro, responda mais rápido e defina pelo menos duas tentativas de follow-up.';
+  if(pl.includes('follow'))return'Crie uma rotina mínima: contato no mesmo dia, retorno em 24h e novo toque com prova ou esclarecimento objetivo.';
+  if(pl.includes('gargalo'))return`Seu gargalo mais forte parece estar em ${S.salesProfile.weaknesses[0].toLowerCase()}`;
+  return`Com base no diagnóstico comercial, a orientação mais prática agora é: ${S.salesProfile.actions[0].toLowerCase()}. Depois disso, evolua para ${S.salesProfile.actions[1]?.toLowerCase()||'organizar o follow-up de forma consistente'}.`;
+}
+function sendChat(inputId,chatId,replyFn){
+  const inp=$(inputId); const p=inp.value.trim(); if(!p) return;
+  addMsg($(chatId),p,'user'); typing($(chatId),replyFn(p)); inp.value='';
+}
+function setupChat(inputId,chatId,sendId,replyFn){
+  $(sendId).addEventListener('click',()=>sendChat(inputId,chatId,replyFn));
+  $(inputId).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat(inputId,chatId,replyFn);}});
+}
+
+/* ═══════════════ EVENT LISTENERS ═══════════════ */
+$('navDiag').addEventListener('click',()=>goToStep(S.step==='resultado'?'resultado':'diagnostico'));
+$('navArea').addEventListener('click',()=>{S.isLogged?(renderDashboard(),renderSalesState(),goToStep('dashboard')):goToStep('auth');});
+$('navAreaBtn').addEventListener('click',()=>{S.isLogged?(renderDashboard(),renderSalesState(),goToStep('dashboard')):goToStep('auth');});
+$('startDiagBtn').addEventListener('click',()=>$('formSection').scrollIntoView({behavior:'smooth',block:'start'}));
+$('redoDiagBtn').addEventListener('click',()=>{S.formStep=0;goToStep('diagnostico');});
+$('prevBtn').addEventListener('click',()=>{if(S.formStep>0){S.formStep--;renderFormStep();}});
+$('nextBtn').addEventListener('click', async ()=>{
+  if(!validateStep()) return;
+  if(S.formStep < FORM_STEPS.length-1){ S.formStep++; renderFormStep(); return; }
+
+  // Último step — gerar diagnóstico
+  const btn=$('nextBtn');
+  btn.disabled=true; btn.textContent='Gerando diagnóstico...';
+
+  // 1. Gera diagnóstico local como fallback
+  S.diag=buildDiag(S.formData);
+
+  // 2. Se logado, tenta chamar Gemini via Edge Function
+  if(S.user && supa){
+    try{
+      toast('Conectando ao Gemini AI...','info');
+      const aiResult=await callDiagnosticoAI();
+      if(aiResult&&aiResult.visao_geral){
+        // Mescla resultado Gemini com o formato interno
+        S.diag={
+          ...S.diag,
+          overview:aiResult.visao_geral,
+          gaps:aiResult.principais_gargalos||S.diag.gaps,
+          direction:aiResult.diagnostico_estrategico||S.diag.direction,
+          attention:aiResult.conclusao_estrategica||S.diag.attention,
+          summary:aiResult.status_empresa||S.diag.summary,
+          swot:[
+            `Forças: ${(aiResult.swot?.forcas||[]).join('. ')}`,
+            `Fraquezas: ${(aiResult.swot?.fraquezas||[]).join('. ')}`,
+            `Oportunidades: ${(aiResult.swot?.oportunidades||[]).join('. ')}`,
+            `Ameaças: ${(aiResult.swot?.ameacas||[]).join('. ')}`
+          ],
+          marketing:{
+            core:aiResult.diagnostico_estrategico||S.diag.marketing.core,
+            focus:aiResult.principais_gargalos?.slice(0,3)||S.diag.marketing.focus,
+            steps:aiResult.plano_acao_inicial?.slice(0,3)||S.diag.marketing.steps
+          }
+        };
+        toast('Diagnóstico gerado com Gemini AI!','success','IA');
+      }
+      // Persiste no Supabase
+      const cId=await ensureCompany();
+      if(cId) await persistDiag(cId, aiResult);
+    }catch(e){
+      console.error('AI call failed:',e);
+      toast('Usando diagnóstico local (IA indisponível).','warning');
+    }
+  }
+
+  pushEvoHistory(S.diag.sc); save();
+  renderResultado();
+  btn.disabled=false; btn.textContent='Gerar leitura estratégica →';
+  goToStep('resultado');
+  toast('Leitura estratégica gerada!','success','Diagnóstico');
+});
+$('goAuthBtn').addEventListener('click',()=>goToStep('auth'));
+$('loginTab').addEventListener('click',()=>{S.authMode='login';renderAuthMode();});
+$('signupTab').addEventListener('click',()=>{S.authMode='signup';renderAuthMode();});
+$('authBtn').addEventListener('click', async(e)=>{
+  e.preventDefault();
+  const email=$('authEmail').value.trim(), pw=$('authPass').value.trim();
+  if(!email||!pw){ toast('Preencha email e senha.','error'); return; }
+
+  const btn=$('authBtn'); btn.disabled=true; btn.textContent='Entrando...';
+
+  if(supa){
+    try{
+      let result;
+      if(S.authMode==='signup'){
+        result=await supa.auth.signUp({email,password:pw});
+        if(result.error) throw result.error;
+        toast('Conta criada! Verifique seu email para confirmar.','success','Cadastro');
+        btn.disabled=false; btn.textContent='Entrar →'; return;
+      } else {
+        result=await supa.auth.signInWithPassword({email,password:pw});
+        if(result.error) throw result.error;
+      }
+      S.user=result.data.user||result.data.session?.user||null;
+      S.connected=true;
+      $('connDot')?.classList.add('ok');
+      // Hidrata dados do Supabase
+      await hydrateFromSupabase();
+      S.isLogged=true;
+      renderDashboard(); renderSalesState();
+      toast(`Bem-vindo, ${S.user.email}!`,'success','Login');
+      goToStep('dashboard');
+    }catch(err){
+      console.error(err);
+      toast(`Falha: ${err.message}. Entrando em modo preview.`,'warning','Aviso');
+      S.isLogged=true; renderDashboard(); renderSalesState();
+      goToStep('dashboard');
+    }
+  } else {
+    // Preview local sem Supabase
+    S.isLogged=true; renderDashboard(); renderSalesState();
+    toast('Acesso em modo preview local.','info','Preview');
+    goToStep('dashboard');
+  }
+  btn.disabled=false; btn.textContent='Entrar →';
+});
+$('logoutBtn').addEventListener('click',()=>{S.isLogged=false;S.activeMod='diagnostico';goToStep('diagnostico');toast('Sessão encerrada.','info');});
+
+// Sidebar
+document.querySelectorAll('.sb-btn[data-mod]').forEach(btn=>{
+  btn.addEventListener('click',()=>{S.activeMod=btn.dataset.mod;renderActiveModule();});
+});
+
+// Fin tabs
+document.querySelectorAll('.fin-tab').forEach(t=>{
+  t.addEventListener('click',()=>switchFinTab(t.dataset.ftab));
+});
+
+// Chat
+setupChat('mktInput','mktChat','mktSend',mktReply);
+document.querySelectorAll('.mkt-prompt').forEach(b=>b.addEventListener('click',()=>{const inp=$('mktInput');inp.value=b.textContent.trim();sendChat('mktInput','mktChat',mktReply);}));
+setupChat('salesInput','salesChat','salesSend',salesReply);
+document.querySelectorAll('.sales-prompt').forEach(b=>b.addEventListener('click',()=>{const inp=$('salesInput');inp.value=b.textContent.trim();sendChat('salesInput','salesChat',salesReply);}));
+
+// Vendas step
+$('sQTextarea').addEventListener('input',e=>{S.salesAnswers[S.salesStep]=e.target.value;});
+$('sQTextarea').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('sNextBtn').click();}});
+$('sPrevBtn').addEventListener('click',()=>{S.salesAnswers[S.salesStep]=$('sQTextarea').value;if(S.salesStep>0){S.salesStep--;renderSalesStep();}});
+$('sNextBtn').addEventListener('click', async()=>{
+  const ans=$('sQTextarea').value.trim();
+  if(!ans){ toast('Responda a pergunta antes de avançar.','error'); $('sQTextarea').focus(); return; }
+  S.salesAnswers[S.salesStep]=ans;
+  if(S.salesStep<SALES_QS.length-1){ S.salesStep++; renderSalesStep(); return; }
+  S.salesProfile=analyzeSales(S.salesAnswers);
+  save(); renderSalesState();
+  // Persiste no Supabase
+  if(supa&&S.user){
+    const cId=S.companyId||await ensureCompany();
+    if(cId) await persistSales(cId);
+  }
+  addMsg($('salesChat'),'Leitura comercial concluída. Agora posso te orientar com base no seu processo de vendas.','ai');
+  toast('Diagnóstico de vendas salvo! Agente liberado.','success','Vendas');
+});
+$('sRedoBtn').addEventListener('click',()=>{S.salesProfile=null;S.salesAnswers=Array(10).fill('');S.salesStep=0;renderSalesState();save();toast('Diagnóstico reiniciado.','info');});
+
+// Conciliação file
+$('concilFile').addEventListener('change',()=>{
+  const f=$('concilFile').files?.[0]; if(!f) return;
+  const r=new FileReader(); r.onload=e=>{
+    S.conciliacao=parseConcilCSV(e.target.result);
+    $('concilTableWrap').classList.remove('hidden');
+    $('concilStatus').innerHTML=`<span>📂</span>Arquivo "${f.name}" processado — ${S.conciliacao.length} transações identificadas.`;
+    renderConcilTable(); refreshCatLists();
+    toast(`${S.conciliacao.length} transações carregadas.`,'success','Conciliação');
+  }; r.readAsText(f);
+});
+$('concilDrop').addEventListener('dragover',e=>{e.preventDefault();$('concilDrop').style.borderColor='rgba(245,158,11,.7)';});
+$('concilDrop').addEventListener('dragleave',()=>$('concilDrop').style.borderColor='');
+$('concilDrop').addEventListener('drop',e=>{e.preventDefault();$('concilDrop').style.borderColor='';const f=e.dataTransfer.files[0];if(f){$('concilFile').files=e.dataTransfer.files;$('concilFile').dispatchEvent(new Event('change'));}});
+
+// Modal outside click
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeModal(o.id);}));
+
+/* ═══════════════ INIT ═══════════════ */
+load();
+// Verificar sessão ativa no Supabase
+(async()=>{
+  if(!supa) return;
+  const {data} = await supa.auth.getSession();
+  if(data?.session?.user){
+    S.user = data.session.user;
+    S.connected = true;
+    $('connDot')?.classList.add('ok');
+  }
+})();
+
+// Escuta mudanças de autenticação
+if(supa){
+  supa.auth.onAuthStateChange((event, session)=>{
+    if(event==='SIGNED_IN'&&session?.user){
+      S.user=session.user; S.connected=true;
+      $('connDot')?.classList.add('ok');
+    }
+    if(event==='SIGNED_OUT'){
+      S.user=null; S.connected=false;
+      $('connDot')?.classList.remove('ok');
+    }
+  });
+}
+
+$('navDiag').style.display='inline-flex';
+renderFormStep(); renderStepDots(); renderAuthMode();
+renderSalesStep(); renderSalesDots();
+addMsg($('mktChat'),'Sou o DigitalMind Marketing. Use o diagnóstico como base e me pergunte sobre posicionamento, conteúdo ou próximos passos.','ai');
+initEvoPeriods();
+if(S.diag){ renderResultado(); renderDashboard(); }
+refreshCatLists();
+testSupa();
+
+
+</script>
+</body>
+</html>
