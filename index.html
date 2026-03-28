@@ -2275,13 +2275,18 @@ function buildAgentContext(){
   };
 }
 async function callAgentGemini(prompt){
-  if(!supa) return null;
   try{
-    // Usa o cliente Supabase direto — funciona com anon key mesmo sem sessão ativa
-    const{data,error}=await supa.functions.invoke('agente-cliente',{
-      body:{prompt,context:buildAgentContext()}
+    const res=await fetch(`${SUPABASE_URL}/functions/v1/agente-cliente`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey':SUPABASE_ANON_KEY
+      },
+      body:JSON.stringify({prompt,context:buildAgentContext()})
     });
-    if(error){console.error('Edge fn error:',error);return null;}
+    if(!res.ok){console.error('Edge fn HTTP error:',res.status);return null;}
+    const data=await res.json();
     return data?.response||null;
   }catch(e){console.error('Gemini agent:',e);return null;}
 }
