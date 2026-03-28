@@ -2016,24 +2016,47 @@ async function mktReply(p){
     }
     if(badge){badge.textContent='● IA Local';badge.className='ai-badge';}
   }
-  // Fallback local usando dados reais
+  // Fallback local inteligente usando todos os dados disponíveis
   const d=S.diag;
-  if(!d) return'Primeiro conclua o diagnóstico para eu conseguir direcionar seu marketing com base real no negócio.';
-  const pl=p.toLowerCase();
   const empresa=S.formData.companyName||'sua empresa';
   const seg=S.formData.segment||'seu segmento';
+  const pl=p.toLowerCase();
   const today=new Date();
   const thisMonth=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
-  const agendados=Object.entries(S.contentCalendar).filter(([d])=>d.startsWith(thisMonth)).reduce((a,[,v])=>a+v.length,0);
-  if(pl.includes('conteúdo')||pl.includes('conteudo')||pl.includes('post')||pl.includes('semana'))
-    return`Para ${empresa} no segmento de ${seg}, o conteúdo mais estratégico agora é o que reforça as prioridades do diagnóstico: ${d.priorities[0].toLowerCase()} e ${d.priorities[1].toLowerCase()}. ${agendados>0?`Você já tem ${agendados} conteúdo(s) agendado(s) esse mês no calendário.`:'Use o Calendário para agendar e dar consistência à produção.'} O próximo passo é transformar os gargalos identificados em pauta real.`;
-  if(pl.includes('posicion'))
-    return`O posicionamento de ${empresa} precisa responder 3 perguntas com clareza: o que resolve, para quem resolve e por que merece ser escolhida. Hoje o diagnóstico aponta ${d.gaps[0]?.toLowerCase()||'falta de clareza estratégica'} como gargalo central. Resolva isso antes de escalar qualquer canal.`;
-  if(pl.includes('instagram')||pl.includes('cliente')||pl.includes('atrair'))
-    return`Para atrair clientes, ${empresa} precisa de uma comunicação mais clara sobre o que entrega. O diagnóstico mostra: ${d.direction}`;
-  if(pl.includes('prioridade'))
-    return`As prioridades de marketing para ${empresa} agora são: 1) ${d.priorities[0]}, 2) ${d.priorities[1]}. ${d.nextMove}`;
-  return`Com base no diagnóstico de ${empresa}, o foco de marketing deve ser: ${d.priorities[0].toLowerCase()} e ${d.priorities[1].toLowerCase()}. O próximo movimento é ${d.nextMove.toLowerCase()}`;
+  const agendados=Object.entries(S.contentCalendar).filter(([k])=>k.startsWith(thisMonth)).reduce((a,[,v])=>a+v.length,0);
+
+  if(!d) return`Para começar a orientar o marketing de ${empresa} com precisão, primeiro complete o diagnóstico estratégico. Ele é a base de tudo — sem ele o agente não consegue personalizar as recomendações para o seu negócio específico.`;
+
+  const txns=S.financial.transactions;
+  const rec=txns.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
+  const dep=txns.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
+  const saldo=rec-dep;
+  const temFinanceiro=txns.length>0;
+  const temVendas=Boolean(S.salesProfile);
+
+  // Respostas contextuais por tema
+  if(pl.includes('conteúdo')||pl.includes('conteudo')||pl.includes('post')||pl.includes('reel')||pl.includes('vídeo')||pl.includes('video'))
+    return`Para ${empresa} no segmento de ${seg}, o conteúdo que mais converte agora é aquele que responde diretamente à dor do seu cliente ideal — não conteúdo genérico. Com base no diagnóstico, seu foco deve ser reforçar ${d.priorities[0].toLowerCase()} na comunicação. ${agendados>0?`Você já tem ${agendados} publicação(ões) agendada(s) esse mês no calendário — bom ritmo.`:'Acesse a aba Calendário e comece a agendar sua grade de conteúdo.'} Um roteiro de 30 segundos eficiente: abertura com a dor do cliente (3s), solução que você oferece (15s), prova ou resultado (8s), chamada para ação clara (4s).`;
+
+  if(pl.includes('posicion')||pl.includes('diferenci'))
+    return`O posicionamento de ${empresa} precisa responder três perguntas de forma clara e memorável: o que você resolve, para quem especificamente, e por que você e não o concorrente. O diagnóstico identificou que ${d.gaps[0]?.toLowerCase()||'a clareza estratégica'} é o principal gargalo. Antes de investir em tráfego ou conteúdo, defina uma proposta de valor que qualquer pessoa entenda em menos de 10 segundos.`;
+
+  if(pl.includes('instagram')||pl.includes('social')||pl.includes('rede'))
+    return`No Instagram, ${empresa} precisa aparecer com consistência e intenção — não apenas presença. A frequência ideal para negócios no estágio atual é de 3 a 4 publicações por semana, priorizando reels educativos ou que mostram bastidor e resultado. O diagnóstico mostra que o próximo movimento é: ${d.nextMove.toLowerCase()}`;
+
+  if(pl.includes('cliente')||pl.includes('atrair')||pl.includes('lead')||pl.includes('venda'))
+    return`Para atrair mais clientes para ${empresa}, o primeiro passo é ter clareza sobre quem é o cliente ideal — com nome, dor principal e contexto. ${temVendas?`O diagnóstico de vendas mostra que ${S.salesProfile.weaknesses[0]?.toLowerCase()||'o processo comercial precisa de mais estrutura'}. `:''}A comunicação atual precisa deixar mais claro o problema que você resolve e o resultado que o cliente vai ter. Isso é mais efetivo do que qualquer técnica de anúncio.`;
+
+  if(pl.includes('tráfego')||pl.includes('trafego')||pl.includes('anunci')||pl.includes('ads'))
+    return`Tráfego pago só amplifica o que já funciona — se a mensagem não está clara, o anúncio vai gastar dinheiro sem converter. Para ${empresa} nesse momento, a prioridade é ${d.priorities[0].toLowerCase()} antes de escalar com mídia paga. ${temFinanceiro&&saldo>0?`Com saldo positivo de R$ ${saldo.toFixed(2)}, você tem margem para testar investimento em tráfego com cautela.`:'Primeiro organize o financeiro para ter clareza sobre quanto pode investir sem comprometer o caixa.'}`;
+
+  if(pl.includes('prioridade')||pl.includes('começar')||pl.includes('comecar')||pl.includes('primeiro'))
+    return`Com base no diagnóstico de ${empresa}, as prioridades de marketing agora são: primeiro ${d.priorities[0]}, depois ${d.priorities[1]}. A sequência correta é organizar a mensagem antes de amplificar o alcance. ${d.nextMove}`;
+
+  if(pl.includes('meta')||pl.includes('objetivo'))
+    return`Para ${empresa} definir metas de marketing realistas, use a aba Metas para estabelecer uma quantidade de conteúdos por semana e por mês. Com score de maturidade em ${d.sc}%, o objetivo agora é criar consistência — não volume. Comece com 3 publicações por semana e aumente conforme o ritmo se estabelece.`;
+
+  return`Com base no diagnóstico de ${empresa} (score ${d.sc}%, segmento: ${seg}), a orientação mais direta para sua pergunta é: ${d.direction} O próximo passo concreto é ${d.nextMove.toLowerCase()}`;
 }
 async function salesReply(p){
   if(supa&&S.user){const resp=await callAgentGemini(p);if(resp)return resp;}
