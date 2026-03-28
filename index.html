@@ -1485,9 +1485,7 @@ function renderDashboard(){
   $('dMatText').textContent=d.nextMove;
   $('scoreRing').style.setProperty('--score',d.sc);
   $('dPriorities').innerHTML=d.priorities.map(p=>`<span class="pill" onclick="togglePriority('${p}')">${p}</span>`).join('');
-  $('mktCore').textContent=d.marketing.core;
-  $('mktFocus').innerHTML=d.marketing.focus.map(i=>`<li>${i}</li>`).join('');
-  $('mktSteps').innerHTML=d.marketing.steps.map(i=>`<li>${i}</li>`).join('');
+  // mktCore/Focus/Steps removidos — agente usa contexto dinâmico
   $('evoRing').style.setProperty('--score',d.sc);
   $('evoScore').textContent=`${d.sc}%`;
   $('evoText').textContent=`Maturidade em ${d.sc}%. O avanço depende de clareza, processo e integração entre os módulos.`;
