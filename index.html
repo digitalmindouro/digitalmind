@@ -2489,14 +2489,20 @@ function renderActionTrail(){
 
 /* ═══════════════ INIT ═══════════════ */
 load();
-// Verificar sessão ativa no Supabase
+// Verificar sessão ativa no Supabase e restaurar login automaticamente
 (async()=>{
   if(!supa) return;
   const {data} = await supa.auth.getSession();
   if(data?.session?.user){
     S.user = data.session.user;
     S.connected = true;
+    S.isLogged = true;
     $('connDot')?.classList.add('ok');
+    // Restaura dashboard automaticamente sem precisar logar de novo
+    await hydrateFromSupabase();
+    renderDashboard();
+    renderSalesState();
+    goToStep('dashboard');
   }
 })();
 
