@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v20</title>
+<title>DigitalMind v21</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -503,10 +503,126 @@ h1 em{font-style:normal;color:var(--primary);}
 .trail-body p{font-size:.82rem;color:var(--muted);line-height:1.6;}
 .trail-section-label{font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;}
 
+
+/* ══ CALENDAR EVENT CARD ══ */
+.cal-event-card{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:600;
+  width:min(520px,94vw);background:linear-gradient(180deg,rgba(10,22,48,.99),rgba(6,16,38,.97));
+  border:1px solid rgba(168,85,247,.3);border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.5);
+  animation:slideUp .22s ease both;}
+.cal-event-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:599;animation:fadeIn .2s ease both;}
+.cal-event-card h3{font-size:1rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.cal-event-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.cal-event-field{display:flex;flex-direction:column;gap:5px;}
+.cal-event-field.full{grid-column:1/-1;}
+.cal-event-field label{font-size:.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.cal-event-field input,.cal-event-field textarea,.cal-event-field select{
+  padding:10px 13px;border-radius:12px;border:1px solid var(--border);
+  background:rgba(255,255,255,.06);color:var(--text);font-size:.88rem;font-family:inherit;
+  outline:none;transition:border-color .18s;width:100%;}
+.cal-event-field textarea{min-height:80px;resize:vertical;}
+.cal-event-field input:focus,.cal-event-field textarea:focus,.cal-event-field select:focus{
+  border-color:rgba(168,85,247,.5);box-shadow:0 0 0 3px rgba(168,85,247,.09);}
+.cal-fmt-row{display:flex;gap:6px;flex-wrap:wrap;}
+.cal-fmt-btn{padding:7px 12px;border-radius:9px;border:1px solid var(--border);
+  background:rgba(255,255,255,.05);color:var(--muted);font-size:.8rem;font-weight:700;
+  cursor:pointer;transition:var(--tr);font-family:inherit;}
+.cal-fmt-btn.sel.reel{border-color:rgba(168,85,247,.5);color:#d8b4fe;background:rgba(168,85,247,.12);}
+.cal-fmt-btn.sel.post{border-color:rgba(75,140,255,.5);color:#93c5fd;background:rgba(75,140,255,.12);}
+.cal-fmt-btn.sel.story{border-color:rgba(245,158,11,.5);color:#fde68a;background:rgba(245,158,11,.12);}
+.cal-fmt-btn.sel.carrossel{border-color:rgba(34,197,94,.5);color:#86efac;background:rgba(34,197,94,.12);}
+.cal-plat-row{display:flex;gap:6px;flex-wrap:wrap;}
+.cal-plat-btn{padding:7px 12px;border-radius:9px;border:1px solid var(--border);
+  background:rgba(255,255,255,.05);color:var(--muted);font-size:.8rem;font-weight:700;
+  cursor:pointer;transition:var(--tr);font-family:inherit;}
+.cal-plat-btn.sel{border-color:rgba(168,85,247,.4);color:#d8b4fe;background:rgba(168,85,247,.1);}
+.cal-event-actions{display:flex;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--border);}
+.cal-day-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.cal-day-dot.reel{background:#a855f7;}.cal-day-dot.post{background:#4b8cff;}
+.cal-day-dot.story{background:#f59e0b;}.cal-day-dot.carrossel{background:#22c55e;}
+.cal-day-item{display:flex;align-items:center;gap:6px;margin-bottom:3px;cursor:pointer;}
+.cal-day-item-label{font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;}
+.cal-status-badge{font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:999px;}
+.cal-status-badge.agendado{background:rgba(75,140,255,.12);color:#93c5fd;}
+.cal-status-badge.publicado{background:rgba(34,197,94,.12);color:#86efac;}
+
+/* ══ MARKDOWN RENDER ══ */
+.msg h1,.msg h2,.msg h3{font-weight:700;margin:8px 0 4px;line-height:1.3;}
+.msg h1{font-size:1rem;}.msg h2{font-size:.92rem;}.msg h3{font-size:.86rem;color:#c084fc;}
+.msg strong{font-weight:700;color:var(--text);}
+.msg em{font-style:italic;color:var(--muted);}
+.msg ul,.msg ol{padding-left:16px;margin:6px 0;}
+.msg li{margin-bottom:4px;line-height:1.55;}
+.msg p{margin-bottom:6px;}
+.msg hr{border:none;border-top:1px solid var(--border);margin:8px 0;}
+.msg code{background:rgba(255,255,255,.08);border-radius:5px;padding:1px 6px;font-size:.82rem;font-family:monospace;}
+
+/* ══ MATURITY SCORE ANIMATED ══ */
+.maturity-breakdown{margin-top:14px;}
+.mat-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.82rem;}
+.mat-item:last-child{border-bottom:none;}
+.mat-item-label{color:var(--muted);}
+.mat-item-val{font-weight:700;}
+.mat-item-val.earned{color:var(--success);}
+.mat-item-val.zero{color:rgba(255,255,255,.2);}
+
 </style>
 </head>
 <body>
 <div id="toastRoot"></div>
+
+<!-- Calendar Event Card Modal -->
+<div class="cal-event-overlay hidden" id="calOverlay" onclick="closeCalEvent()"></div>
+<div class="cal-event-card hidden" id="calEventCard">
+  <h3>📅 <span id="calEventCardTitle">Novo conteúdo</span></h3>
+  <div class="cal-event-grid">
+    <div class="cal-event-field full">
+      <label>Título</label>
+      <input type="text" id="cevTitulo" placeholder="Ex.: Como atrair clientes pelo Instagram"/>
+    </div>
+    <div class="cal-event-field full">
+      <label>Descrição / roteiro</label>
+      <textarea id="cevDescricao" placeholder="Detalhe o tema, roteiro ou observação..."></textarea>
+    </div>
+    <div class="cal-event-field">
+      <label>Data</label>
+      <input type="date" id="cevData"/>
+    </div>
+    <div class="cal-event-field">
+      <label>Hora de publicação</label>
+      <input type="time" id="cevHora" value="09:00"/>
+    </div>
+    <div class="cal-event-field full">
+      <label>Formato</label>
+      <div class="cal-fmt-row" id="cevFmtRow">
+        <button class="cal-fmt-btn post" onclick="selFmt('post')">📷 Post</button>
+        <button class="cal-fmt-btn reel" onclick="selFmt('reel')">🎬 Reel</button>
+        <button class="cal-fmt-btn story" onclick="selFmt('story')">⚡ Story</button>
+        <button class="cal-fmt-btn carrossel" onclick="selFmt('carrossel')">📑 Carrossel</button>
+      </div>
+    </div>
+    <div class="cal-event-field full">
+      <label>Plataforma</label>
+      <div class="cal-plat-row" id="cevPlatRow">
+        <button class="cal-plat-btn" onclick="selPlat('instagram')">📸 Instagram</button>
+        <button class="cal-plat-btn" onclick="selPlat('tiktok')">🎵 TikTok</button>
+        <button class="cal-plat-btn" onclick="selPlat('facebook')">👥 Facebook</button>
+        <button class="cal-plat-btn" onclick="selPlat('whatsapp')">💬 WhatsApp</button>
+      </div>
+    </div>
+    <div class="cal-event-field">
+      <label>Status</label>
+      <select id="cevStatus">
+        <option value="agendado">📅 Agendado</option>
+        <option value="publicado">✅ Publicado</option>
+      </select>
+    </div>
+  </div>
+  <div class="cal-event-actions">
+    <button class="btn btn-primary" style="flex:1" onclick="saveCalEvent()">Salvar conteúdo</button>
+    <button class="btn btn-ghost" onclick="closeCalEvent()">Cancelar</button>
+    <button class="btn-danger-xs" id="cevDeleteBtn" onclick="deleteCalEvent()" style="display:none">Apagar</button>
+  </div>
+</div>
 
 <!-- Priority Modal -->
 <div class="modal-overlay" id="priorityModal">
@@ -721,7 +837,7 @@ h1 em{font-style:normal;color:var(--primary);}
             <div class="card">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                 <h3>Converse com o agente</h3>
-                <span class="ai-badge" id="mktAiBadge">● IA Local</span>
+                <span class="ai-badge" id="mktAiBadge">● DM IA</span>
               </div>
               <div id="matrixStatus" style="font-size:.74rem;color:var(--muted);margin-bottom:11px;display:flex;gap:10px;flex-wrap:wrap;"></div>
               <div class="chat-box" id="mktChat"></div>
@@ -787,17 +903,6 @@ h1 em{font-style:normal;color:var(--primary);}
           <div class="cal-grid-wrap">
             <div class="cal-weekdays"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div>
             <div class="cal-grid" id="calGrid"></div>
-          </div>
-          <div class="cal-add-form hidden" id="calAddForm">
-            <h4 id="calAddTitle">Adicionar conteúdo</h4>
-            <div class="cal-type-row">
-              <button class="cal-type-btn post" onclick="addCalContent('post')">📷 Post</button>
-              <button class="cal-type-btn reel" onclick="addCalContent('reel')">🎬 Reel</button>
-              <button class="cal-type-btn story" onclick="addCalContent('story')">⚡ Story</button>
-              <button class="cal-type-btn carrossel" onclick="addCalContent('carrossel')">📑 Carrossel</button>
-            </div>
-            <input type="text" id="calContentNote" class="cal-note-input" placeholder="Tema ou observação (opcional)"/>
-            <button class="btn btn-ghost btn-sm" onclick="closeCalForm()">Cancelar</button>
           </div>
           <div class="cal-upcoming" id="calUpcoming"></div>
         </div>
@@ -1103,10 +1208,13 @@ const S = {
   contentCalendar: {},
   calYear: new Date().getFullYear(),
   calMonth: new Date().getMonth(),
-  calSelectedDate: null
+  calSelectedDate: null,
+  calEditingId: null,
+  calEventFmt: 'post',
+  calEventPlat: 'instagram'
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v20';
+const SKEY = 'dm_v21';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -1597,6 +1705,7 @@ function renderDashboard(){
   renderSalesState();
   renderActionTrail();
   renderMktProgressCards();
+  recalcMaturity();
   save();
 }
 
@@ -1999,7 +2108,17 @@ function renderActiveModule(){
 }
 
 /* ═══════════════ CHAT ═══════════════ */
-function addMsg(box,text,role='ai'){const d=document.createElement('div');d.className=`msg ${role}`;d.textContent=text;box.appendChild(d);box.scrollTop=box.scrollHeight;}
+function addMsg(box,text,role='ai'){
+  const d=document.createElement('div'); d.className=`msg ${role}`;
+  if(role==='ai'){
+    // Strip JSON action blocks from display
+    const clean=text.replace(/```json[\s\S]+?```/g,'').replace(/\{\s*"action":[\s\S]+?\}/g,'').trim();
+    d.innerHTML=renderMarkdown(clean);
+  } else {
+    d.textContent=text;
+  }
+  box.appendChild(d); box.scrollTop=box.scrollHeight;
+}
 function typing(box,text){
   const d=document.createElement('div');d.className='msg ai';d.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
   box.appendChild(d);box.scrollTop=box.scrollHeight;
@@ -2012,10 +2131,10 @@ async function mktReply(p){
     if(badge) badge.innerHTML='⟳ Consultando IA...';
     const resp=await callAgentGemini(p);
     if(resp){
-      if(badge){badge.textContent='● Gemini IA';badge.className='ai-badge live';}
+      if(badge){badge.textContent='● DM IA';badge.className='ai-badge live';}
       return resp;
     }
-    if(badge){badge.textContent='● IA Local';badge.className='ai-badge';}
+    if(badge){badge.textContent='● DM IA Local';badge.className='ai-badge';}
   }
   // Fallback local inteligente usando todos os dados disponíveis
   const d=S.diag;
@@ -2071,11 +2190,15 @@ async function salesReply(p){
 async function sendChat(inputId,chatId,replyFn){
   const inp=$(inputId); const p=inp.value.trim(); if(!p) return;
   addMsg($(chatId),p,'user'); inp.value='';
-  const dot=document.createElement('div'); dot.className='msg ai'; dot.id='typingNow';
+  const dot=document.createElement('div'); dot.className='msg ai';
   dot.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
   $(chatId).appendChild(dot); $(chatId).scrollTop=$(chatId).scrollHeight;
   const reply=await replyFn(p);
-  dot.remove(); addMsg($(chatId),reply||'Desculpe, não consegui processar sua pergunta.','ai');
+  dot.remove();
+  const text=reply||'Desculpe, não consegui processar sua pergunta.';
+  addMsg($(chatId),text,'ai');
+  // Detect and execute calendar/meta actions from agent response
+  if(reply) detectAndExecuteActions(reply);
 }
 function setupChat(inputId,chatId,sendId,replyFn){
   $(sendId).addEventListener('click',()=>sendChat(inputId,chatId,replyFn));
@@ -2392,6 +2515,15 @@ function navCal(dir){
   if(S.calMonth<0){S.calMonth=11;S.calYear--;}
   renderCalendar();
 }
+
+function calDateStr(year,month,day){
+  return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
+function getAllEventsForDate(ds){
+  return (S.contentCalendar[ds]||[]);
+}
+
 function renderCalendar(){
   const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   $('calTitle').textContent=`${MONTHS[S.calMonth]} ${S.calYear}`;
@@ -2400,60 +2532,174 @@ function renderCalendar(){
   const daysInPrev=new Date(S.calYear,S.calMonth,0).getDate();
   const today=new Date();
   let html='';
-  for(let i=firstDay-1;i>=0;i--){html+=`<div class="cal-day other-month"><div class="cal-day-num">${daysInPrev-i}</div></div>`;}
+  for(let i=firstDay-1;i>=0;i--){
+    html+=`<div class="cal-day other-month"><div class="cal-day-num">${daysInPrev-i}</div></div>`;
+  }
   for(let d=1;d<=daysInMonth;d++){
-    const ds=`${S.calYear}-${String(S.calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const ds=calDateStr(S.calYear,S.calMonth,d);
     const isToday=today.getFullYear()===S.calYear&&today.getMonth()===S.calMonth&&today.getDate()===d;
-    const contents=S.contentCalendar[ds]||[];
-    const dots=contents.map(c=>`<div class="cal-dot ${c.type}"></div>`).join('');
-    html+=`<div class="cal-day${isToday?' today':''}${contents.length?' has-content':''}" onclick="selectCalDay('${ds}',${d})">
-      <div class="cal-day-num">${d}</div><div class="cal-dots">${dots}</div></div>`;
+    const events=S.contentCalendar[ds]||[];
+    const dots=events.slice(0,4).map(e=>`<div class="cal-dot ${e.formato||e.type||'post'}"></div>`).join('');
+    const items=events.slice(0,2).map(e=>`
+      <div class="cal-day-item" onclick="event.stopPropagation();openCalEvent('${ds}','${e.id}')">
+        <div class="cal-day-dot ${e.formato||e.type||'post'}"></div>
+        <span class="cal-day-item-label">${e.titulo||e.note||e.formato||'conteúdo'}</span>
+      </div>`).join('');
+    const more=events.length>2?`<div style="font-size:.68rem;color:var(--muted)">+${events.length-2} mais</div>`:'';
+    html+=`<div class="cal-day${isToday?' today':''}" onclick="openCalEvent('${ds}',null)">
+      <div class="cal-day-num">${d}</div>
+      ${items}${more}
+    </div>`;
   }
   const total=firstDay+daysInMonth; const rem=total%7===0?0:7-(total%7);
   for(let d=1;d<=rem;d++){html+=`<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;}
   $('calGrid').innerHTML=html;
   renderCalUpcoming();
 }
-function selectCalDay(ds,dayNum){
+
+/* ── Event Card Modal ── */
+function openCalEvent(ds, eventId){
   S.calSelectedDate=ds;
-  $('calAddTitle').textContent=`Adicionar conteúdo — dia ${dayNum}`;
-  $('calAddForm').classList.remove('hidden');
-  $('calContentNote').value='';
-}
-function closeCalForm(){$('calAddForm').classList.add('hidden');S.calSelectedDate=null;}
-function addCalContent(type){
-  if(!S.calSelectedDate) return;
-  const note=$('calContentNote').value.trim();
-  if(!S.contentCalendar[S.calSelectedDate]) S.contentCalendar[S.calSelectedDate]=[];
-  S.contentCalendar[S.calSelectedDate].push({type,note});
-  save(); renderCalendar();
-  toast(`${type.charAt(0).toUpperCase()+type.slice(1)} adicionado!`,'success');
-  closeCalForm();
-  // Ask agent to comment on the scheduling
-  if(supa&&S.user) {
-    setTimeout(async()=>{
-      const agentCtx=buildAgentContext();
-      const resp=await callAgentGemini(`Acabei de agendar um ${type} para o dia ${S.calSelectedDate.split('-').reverse().join('/')}. Com base no contexto da empresa, qual seria um bom tema para esse conteúdo?`);
-      if(resp) addMsg($('mktChat'),resp,'ai');
-    },200);
+  S.calEditingId=eventId||null;
+  const dt=new Date(ds+'T00:00:00');
+  $('calEventCardTitle').textContent=eventId?'Editar conteúdo':`${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`;
+  $('cevData').value=ds;
+  $('cevDeleteBtn').style.display=eventId?'block':'none';
+  if(eventId){
+    const ev=(S.contentCalendar[ds]||[]).find(e=>e.id===eventId)||{};
+    $('cevTitulo').value=ev.titulo||ev.note||'';
+    $('cevDescricao').value=ev.descricao||'';
+    $('cevHora').value=ev.hora||'09:00';
+    $('cevStatus').value=ev.status||'agendado';
+    S.calEventFmt=ev.formato||ev.type||'post';
+    S.calEventPlat=ev.plataforma||'instagram';
+  } else {
+    $('cevTitulo').value=''; $('cevDescricao').value='';
+    $('cevHora').value='09:00'; $('cevStatus').value='agendado';
+    S.calEventFmt='post'; S.calEventPlat='instagram';
   }
+  updateFmtBtns(); updatePlatBtns();
+  $('calOverlay').classList.remove('hidden');
+  $('calEventCard').classList.remove('hidden');
+  setTimeout(()=>$('cevTitulo').focus(),80);
 }
-function removeCalContent(ds){delete S.contentCalendar[ds];save();renderCalendar();}
+
+function closeCalEvent(){
+  $('calOverlay').classList.add('hidden');
+  $('calEventCard').classList.add('hidden');
+  S.calSelectedDate=null; S.calEditingId=null;
+}
+
+function selFmt(fmt){S.calEventFmt=fmt;updateFmtBtns();}
+function selPlat(plat){S.calEventPlat=plat;updatePlatBtns();}
+
+function updateFmtBtns(){
+  document.querySelectorAll('.cal-fmt-btn').forEach(b=>{
+    b.classList.toggle('sel',b.classList.contains(S.calEventFmt));
+    b.className=b.className.replace(/\bsel\b/,'').trim();
+    if(b.onclick&&b.onclick.toString().includes(`'${S.calEventFmt}'`)) b.classList.add('sel',S.calEventFmt);
+  });
+  // simpler approach
+  document.querySelectorAll('#cevFmtRow .cal-fmt-btn').forEach(b=>{
+    const fmt=b.getAttribute('onclick')?.match(/'(\w+)'/)?.[1];
+    b.className='cal-fmt-btn '+(fmt||'');
+    if(fmt===S.calEventFmt) b.classList.add('sel');
+  });
+}
+function updatePlatBtns(){
+  document.querySelectorAll('#cevPlatRow .cal-plat-btn').forEach(b=>{
+    const plat=b.getAttribute('onclick')?.match(/'(\w+)'/)?.[1];
+    b.className='cal-plat-btn';
+    if(plat===S.calEventPlat) b.classList.add('sel');
+  });
+}
+
+function saveCalEvent(){
+  const ds=$('cevData').value||S.calSelectedDate;
+  if(!ds){toast('Selecione uma data.','error');return;}
+  const titulo=$('cevTitulo').value.trim()||'Conteúdo';
+  const ev={
+    id:S.calEditingId||uuid(),
+    titulo, descricao:$('cevDescricao').value.trim(),
+    hora:$('cevHora').value||'09:00',
+    formato:S.calEventFmt, type:S.calEventFmt,
+    plataforma:S.calEventPlat,
+    status:$('cevStatus').value||'agendado',
+    note:titulo
+  };
+  if(!S.contentCalendar[ds]) S.contentCalendar[ds]=[];
+  if(S.calEditingId){
+    const idx=S.contentCalendar[ds].findIndex(e=>e.id===S.calEditingId);
+    if(idx>=0) S.contentCalendar[ds][idx]=ev; else S.contentCalendar[ds].push(ev);
+  } else {
+    S.contentCalendar[ds].push(ev);
+  }
+  // Se publicado, atualiza progresso das metas
+  if(ev.status==='publicado') updateGoalProgress();
+  save(); renderCalendar(); renderMktProgressCards(); recalcMaturity();
+  closeCalEvent();
+  toast(`"${titulo}" salvo no calendário!`,'success');
+}
+
+function deleteCalEvent(){
+  if(!S.calSelectedDate||!S.calEditingId) return;
+  S.contentCalendar[S.calSelectedDate]=(S.contentCalendar[S.calSelectedDate]||[]).filter(e=>e.id!==S.calEditingId);
+  if(!S.contentCalendar[S.calSelectedDate].length) delete S.contentCalendar[S.calSelectedDate];
+  save(); renderCalendar(); renderMktProgressCards(); recalcMaturity();
+  closeCalEvent();
+  toast('Conteúdo removido.','info');
+}
+
+function updateGoalProgress(){
+  // Conta publicados no mês atual e semana atual
+  const now=new Date();
+  const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  // Semana atual (dom-sáb)
+  const startOfWeek=new Date(now); startOfWeek.setDate(now.getDate()-now.getDay()); startOfWeek.setHours(0,0,0,0);
+  const endOfWeek=new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate()+6); endOfWeek.setHours(23,59,59,999);
+  let weekPub=0, monthPub=0;
+  Object.entries(S.contentCalendar).forEach(([ds,evs])=>{
+    const d=new Date(ds+'T00:00:00');
+    const published=evs.filter(e=>e.status==='publicado').length;
+    if(ds.startsWith(thisMonth)) monthPub+=published;
+    if(d>=startOfWeek&&d<=endOfWeek) weekPub+=published;
+  });
+  if(S.mktGoals?.week) S.mktGoals.week.done=Math.min(weekPub,S.mktGoals.week.target);
+  if(S.mktGoals?.month) S.mktGoals.month.done=Math.min(monthPub,S.mktGoals.month.target);
+}
+
 function renderCalUpcoming(){
   const el=$('calUpcoming'); if(!el) return;
   const today=new Date(); today.setHours(0,0,0,0);
   const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const PLAT_ICONS={instagram:'📸',tiktok:'🎵',facebook:'👥',whatsapp:'💬'};
   const entries=Object.entries(S.contentCalendar)
     .filter(([d])=>new Date(d+'T00:00:00')>=today)
-    .sort(([a],[b])=>new Date(a)-new Date(b)).slice(0,8);
+    .sort(([a],[b])=>new Date(a)-new Date(b)).slice(0,10);
   if(!entries.length){el.innerHTML='';return;}
-  el.innerHTML=`<h4>Próximos conteúdos agendados</h4>`+entries.map(([d,contents])=>{
-    const dt=new Date(d+'T00:00:00');
+  const rows=[];
+  entries.forEach(([ds,evs])=>{
+    const dt=new Date(ds+'T00:00:00');
     const lbl=`${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
-    const types=contents.map(ct=>`<span class="cal-dot ${ct.type}" style="width:8px;height:8px;display:inline-block;border-radius:50%;vertical-align:middle"></span> ${ct.type}`).join(', ');
-    const notes=contents.filter(ct=>ct.note).map(ct=>ct.note).join(', ');
-    return`<div class="cal-upcoming-item"><span class="cal-upcoming-date">${lbl}</span><span style="flex:1">${types}${notes?' — '+notes:''}</span><button class="btn-danger-xs" onclick="removeCalContent('${d}')">✕</button></div>`;
-  }).join('');
+    evs.forEach(ev=>{
+      rows.push(`<div class="cal-upcoming-item">
+        <span class="cal-upcoming-date">${lbl}</span>
+        <div class="cal-day-dot ${ev.formato||ev.type||'post'}" style="flex-shrink:0"></div>
+        <span style="flex:1;font-size:.82rem">${ev.titulo||ev.note||'Conteúdo'}</span>
+        <span style="font-size:.74rem;color:var(--muted)">${PLAT_ICONS[ev.plataforma]||''} ${ev.hora||''}</span>
+        <span class="cal-status-badge ${ev.status||'agendado'}">${ev.status==='publicado'?'✅ pub':'📅 ag'}</span>
+        <button class="btn-danger-xs" onclick="quickDeleteCal('${ds}','${ev.id}')">✕</button>
+      </div>`);
+    });
+  });
+  el.innerHTML=`<h4 style="font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px;font-weight:700">Próximos conteúdos</h4>`+rows.join('');
+}
+
+function quickDeleteCal(ds,id){
+  S.contentCalendar[ds]=(S.contentCalendar[ds]||[]).filter(e=>e.id!==id);
+  if(!S.contentCalendar[ds]?.length) delete S.contentCalendar[ds];
+  save(); renderCalendar(); renderCalUpcoming();
+  toast('Conteúdo removido.','info');
 }
 
 /* ═══════════════ PRODUÇÃO ═══════════════ */
@@ -2533,6 +2779,146 @@ function renderActionTrail(){
         <p>${s.desc}</p>
       </div>
     </div>`).join('');
+}
+
+
+/* ═══════════════ MATURIDADE REAL ═══════════════ */
+function calcMaturityScore(){
+  let score=0;
+  const txns=S.financial.transactions;
+  // Diagnóstico estratégico
+  if(S.diag) score+=20;
+  // Diagnóstico de vendas
+  if(S.salesProfile) score+=15;
+  // Financeiro
+  if(txns.length>=1) score+=10;
+  if(txns.length>=5) score+=5;
+  // Cliente cadastrado
+  if(S.contacts.filter(c=>c.tipo==='cliente').length>=1) score+=5;
+  // Produto cadastrado
+  if(S.products.length>=1) score+=5;
+  // Calendário
+  const now=new Date();
+  const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const agendados=Object.entries(S.contentCalendar)
+    .filter(([d])=>d.startsWith(thisMonth))
+    .reduce((a,[,v])=>a+v.length,0);
+  if(agendados>=3) score+=10;
+  // Conteúdos publicados
+  const publicados=Object.values(S.contentCalendar)
+    .flat().filter(e=>e.status==='publicado').length;
+  score+=Math.min(publicados*2,10);
+  // Meta definida
+  if(S.mktGoals?.week) score+=5;
+  if(S.mktGoals?.month) score+=5;
+  // Meta concluída
+  if(S.mktGoals?.week&&S.mktGoals.week.done>=S.mktGoals.week.target) score+=5;
+  if(S.mktGoals?.month&&S.mktGoals.month.done>=S.mktGoals.month.target) score+=10;
+  return Math.min(100,score);
+}
+
+function recalcMaturity(){
+  const score=calcMaturityScore();
+  // Update diag score
+  if(S.diag) S.diag.sc=score;
+  // Update all score displays
+  [$('topScore'),$('dashScore'),$('evoScore'),$('evolutionScore')].forEach(el=>{if(el) el.textContent=`${score}%`;});
+  [$('scoreRing'),$('evoRing'),$('evolutionRing')].forEach(el=>{if(el) el.style.setProperty('--score',score);});
+  if($('mTrend')){
+    $('mTrend').textContent=score>=70?'▲ Boa base estrutural':score>=50?'● Em construção':'● Requer estruturação';
+    $('mTrend').className=`metric-trend ${score>=70?'up':'neutral'}`;
+  }
+  // Push to evo history
+  pushEvoHistory(score);
+  save();
+}
+
+function getMaturityBreakdown(){
+  const txns=S.financial.transactions;
+  const now=new Date();
+  const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const agendados=Object.entries(S.contentCalendar).filter(([d])=>d.startsWith(thisMonth)).reduce((a,[,v])=>a+v.length,0);
+  const publicados=Object.values(S.contentCalendar).flat().filter(e=>e.status==='publicado').length;
+  return [
+    {label:'Diagnóstico estratégico',earned:S.diag?20:0,max:20},
+    {label:'Diagnóstico de vendas',earned:S.salesProfile?15:0,max:15},
+    {label:'Financeiro (lançamentos)',earned:txns.length>=5?15:txns.length>=1?10:0,max:15},
+    {label:'Clientes e produtos cadastrados',earned:Math.min((S.contacts.filter(c=>c.tipo==='cliente').length>=1?5:0)+(S.products.length>=1?5:0),10),max:10},
+    {label:'Calendário de conteúdo',earned:agendados>=3?10:0,max:10},
+    {label:'Conteúdos publicados',earned:Math.min(publicados*2,10),max:10},
+    {label:'Metas definidas e concluídas',earned:Math.min((S.mktGoals?.week?5:0)+(S.mktGoals?.month?5:0)+(S.mktGoals?.week?.done>=S.mktGoals?.week?.target?5:0)+(S.mktGoals?.month?.done>=S.mktGoals?.month?.target?10:0),25),max:25}
+  ];
+}
+
+/* ═══════════════ MARKDOWN RENDERER ═══════════════ */
+function renderMarkdown(text){
+  if(!text) return '';
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/^\* (.+)$/gm,'<li>$1</li>')
+    .replace(/^- (.+)$/gm,'<li>$1</li>')
+    .replace(/^\d+\. (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>')
+    .replace(/^---$/gm,'<hr>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+    .replace(/^(?!<[hpuolhr])(.+)$/gm,(m,p)=>p?`<p>${p}</p>`:m);
+}
+
+/* ═══════════════ AGENT → CALENDAR/METAS ACTION ═══════════════ */
+function detectAndExecuteActions(responseText){
+  // Look for JSON action block in response
+  const jsonMatch=responseText.match(/```json([\s\S]+?)```|\{\s*"action":[\s\S]+?\}/);
+  if(!jsonMatch) return null;
+  try{
+    const raw=jsonMatch[1]||jsonMatch[0];
+    const action=JSON.parse(raw.trim());
+    if(action.action==='calendar'&&Array.isArray(action.items)){
+      let added=0;
+      action.items.forEach(item=>{
+        if(!item.data) return;
+        const ev={
+          id:uuid(),
+          titulo:item.titulo||item.title||'Conteúdo',
+          descricao:item.descricao||item.roteiro||'',
+          hora:item.hora||'09:00',
+          formato:(item.formato||item.type||'post').toLowerCase(),
+          type:(item.formato||item.type||'post').toLowerCase(),
+          plataforma:(item.plataforma||'instagram').toLowerCase(),
+          status:'agendado',
+          note:item.titulo||item.title||'Conteúdo'
+        };
+        if(!S.contentCalendar[item.data]) S.contentCalendar[item.data]=[];
+        S.contentCalendar[item.data].push(ev); added++;
+      });
+      if(added){
+        // Auto-set monthly goal if not set
+        if(!S.mktGoals.month&&added>=3){
+          S.mktGoals.month={target:added,label:`${added} conteúdos no período`,done:0};
+        }
+        save(); renderCalendar(); renderMktProgressCards(); recalcMaturity();
+        toast(`${added} conteúdo(s) adicionado(s) ao calendário automaticamente!`,'success','Calendário IA');
+      }
+      return added;
+    }
+    if(action.action==='metas'){
+      if(action.semana&&!S.mktGoals.week){
+        S.mktGoals.week={target:action.semana.quantidade||5,label:action.semana.descricao||`${action.semana.quantidade} conteúdos por semana`,done:0};
+      }
+      if(action.mes&&!S.mktGoals.month){
+        S.mktGoals.month={target:action.mes.quantidade||20,label:action.mes.descricao||`${action.mes.quantidade} conteúdos no mês`,done:0};
+      }
+      save(); renderGoals();
+      toast('Metas definidas pelo agente!','success','Metas IA');
+      return true;
+    }
+  }catch(e){ /* not a valid action */ }
+  return null;
 }
 
 /* ═══════════════ INIT ═══════════════ */
