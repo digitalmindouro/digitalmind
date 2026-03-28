@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v21</title>
+<title>DigitalMind v22</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -565,6 +565,41 @@ h1 em{font-style:normal;color:var(--primary);}
 .mat-item-val.earned{color:var(--success);}
 .mat-item-val.zero{color:rgba(255,255,255,.2);}
 
+
+/* ══ CALENDAR SIDE PANEL ══ */
+.cal-layout{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;}
+.cal-side-panel{background:rgba(168,85,247,.04);border:1px solid rgba(168,85,247,.2);border-radius:20px;padding:20px;position:sticky;top:80px;}
+.cal-side-panel h3{font-size:.9rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.cal-side-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.cal-side-field label{font-size:.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.cal-side-field input,.cal-side-field select{padding:9px 12px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.86rem;font-family:inherit;outline:none;transition:border-color .18s;width:100%;}
+.cal-side-field input:focus,.cal-side-field select:focus{border-color:rgba(168,85,247,.45);}
+.cal-chip-row{display:flex;gap:6px;flex-wrap:wrap;}
+.cal-chip{padding:6px 11px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);font-size:.78rem;font-weight:700;cursor:pointer;transition:var(--tr);font-family:inherit;}
+.cal-chip:hover{border-color:rgba(168,85,247,.3);color:var(--text);}
+.cal-chip.sel{border-color:rgba(168,85,247,.5);color:#d8b4fe;background:rgba(168,85,247,.12);}
+.cal-chip.sel.post{border-color:rgba(75,140,255,.5);color:#93c5fd;background:rgba(75,140,255,.12);}
+.cal-chip.sel.reel{border-color:rgba(168,85,247,.5);color:#d8b4fe;background:rgba(168,85,247,.12);}
+.cal-chip.sel.story{border-color:rgba(245,158,11,.5);color:#fde68a;background:rgba(245,158,11,.12);}
+.cal-chip.sel.carrossel{border-color:rgba(34,197,94,.5);color:#86efac;background:rgba(34,197,94,.12);}
+.cal-side-sep{height:1px;background:var(--border);margin:14px 0;}
+
+/* ══ SALES GOALS ══ */
+.sales-goals-section{margin-top:22px;padding-top:20px;border-top:1px solid var(--border);}
+.sales-goals-section h3{font-size:.9rem;font-weight:700;margin-bottom:14px;}
+.sales-goal-form{display:grid;grid-template-columns:1fr 80px auto;gap:8px;align-items:end;margin-bottom:14px;}
+.sgf-field{display:flex;flex-direction:column;gap:4px;}
+.sgf-field label{font-size:.72rem;font-weight:700;color:var(--muted);}
+.sgf-field input,.sgf-field select{padding:9px 12px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.84rem;font-family:inherit;outline:none;width:100%;transition:border-color .18s;}
+.sgf-field input:focus,.sgf-field select:focus{border-color:rgba(34,197,94,.45);}
+.sales-goal-item{background:rgba(34,197,94,.04);border:1px solid rgba(34,197,94,.16);border-radius:14px;padding:14px;margin-bottom:8px;}
+.sgi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.sgi-label{font-size:.86rem;font-weight:700;}
+.sgi-count{font-size:.84rem;font-weight:700;color:var(--c-vnd);}
+.sgi-bar-track{height:5px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:9px;}
+.sgi-bar-fill{height:100%;background:linear-gradient(90deg,var(--c-vnd),#86efac);border-radius:999px;transition:width .4s ease;}
+.sgi-actions{display:flex;gap:7px;}
+
 </style>
 </head>
 <body>
@@ -860,51 +895,83 @@ h1 em{font-style:normal;color:var(--primary);}
           </div>
         </div>
 
-        <!-- METAS -->
+        <!-- METAS — progresso de conteúdo do calendário -->
         <div class="mkt-panel" id="mktpanel-metas">
-          <div class="goals-layout">
-            <div class="goal-set-card">
-              <h3>🎯 Meta da Semana</h3>
-              <div class="goal-form">
-                <input type="number" id="weekGoalTarget" placeholder="Qtd. conteúdos" min="1" max="100"/>
-                <input type="text" id="weekGoalLabel" placeholder="Descrição da meta"/>
-                <button class="btn btn-primary btn-sm" onclick="setGoal('week')">Definir</button>
-              </div>
-              <div id="weekGoalDisplay"><div class="empty-state" style="padding:12px"><p>Nenhuma meta semanal definida.</p></div></div>
-            </div>
-            <div class="goal-set-card">
-              <h3>📅 Meta do Mês</h3>
-              <div class="goal-form">
-                <input type="number" id="monthGoalTarget" placeholder="Qtd. conteúdos" min="1" max="200"/>
-                <input type="text" id="monthGoalLabel" placeholder="Descrição da meta"/>
-                <button class="btn btn-primary btn-sm" onclick="setGoal('month')">Definir</button>
-              </div>
-              <div id="monthGoalDisplay"><div class="empty-state" style="padding:12px"><p>Nenhuma meta mensal definida.</p></div></div>
-            </div>
+          <div class="info-card" style="margin-bottom:16px">
+            <h3>Progresso de conteúdo</h3>
+            <p style="font-size:.84rem;color:var(--muted);margin-bottom:14px">Baseado nos conteúdos agendados e publicados no calendário.</p>
+            <div class="mkt-progress-cards" id="mktProgressCards"></div>
           </div>
-          <div class="sep"></div>
-          <p style="font-size:.82rem;color:var(--muted);margin-bottom:13px;">Progresso geral baseado nos conteúdos agendados e metas definidas.</p>
-          <div class="mkt-progress-cards" id="mktProgressCards"></div>
+          <div class="info-card">
+            <h3>Publicações do mês</h3>
+            <div id="mktPubList"><div class="empty-state" style="padding:12px"><p>Nenhum conteúdo publicado ainda.</p></div></div>
+          </div>
         </div>
 
         <!-- CALENDÁRIO -->
         <div class="mkt-panel" id="mktpanel-calendario">
-          <div class="cal-header">
-            <button class="btn btn-ghost btn-sm" onclick="navCal(-1)">←</button>
-            <h3 id="calTitle">Março 2026</h3>
-            <button class="btn btn-ghost btn-sm" onclick="navCal(1)">→</button>
-            <div class="cal-legend">
-              <div class="cal-leg"><div class="cal-leg-dot post"></div>Post</div>
-              <div class="cal-leg"><div class="cal-leg-dot reel"></div>Reel</div>
-              <div class="cal-leg"><div class="cal-leg-dot story"></div>Story</div>
-              <div class="cal-leg"><div class="cal-leg-dot carrossel"></div>Carrossel</div>
+          <div class="cal-layout">
+            <!-- Calendar main -->
+            <div>
+              <div class="cal-header">
+                <button class="btn btn-ghost btn-sm" onclick="navCal(-1)">←</button>
+                <h3 id="calTitle">Março 2026</h3>
+                <button class="btn btn-ghost btn-sm" onclick="navCal(1)">→</button>
+                <div class="cal-legend">
+                  <div class="cal-leg"><div class="cal-leg-dot post"></div>Post</div>
+                  <div class="cal-leg"><div class="cal-leg-dot reel"></div>Reel</div>
+                  <div class="cal-leg"><div class="cal-leg-dot story"></div>Story</div>
+                  <div class="cal-leg"><div class="cal-leg-dot carrossel"></div>Carrossel</div>
+                </div>
+              </div>
+              <div class="cal-grid-wrap">
+                <div class="cal-weekdays"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div>
+                <div class="cal-grid" id="calGrid"></div>
+              </div>
+              <div class="cal-upcoming" id="calUpcoming"></div>
+            </div>
+            <!-- Side panel: schedule via agent -->
+            <div class="cal-side-panel">
+              <h3>📅 Agendar conteúdo</h3>
+              <div class="cal-side-field">
+                <label>Data</label>
+                <input type="date" id="spData"/>
+              </div>
+              <div class="cal-side-field">
+                <label>Hora</label>
+                <input type="time" id="spHora" value="09:00"/>
+              </div>
+              <div class="cal-side-field">
+                <label>Tema / assunto</label>
+                <input type="text" id="spTema" placeholder="Ex.: Como atrair clientes..."/>
+              </div>
+              <div class="cal-side-field">
+                <label>Formato</label>
+                <div class="cal-chip-row" id="spFmtRow">
+                  <button class="cal-chip reel sel" data-fmt="reel" onclick="spSelFmt(this)">🎬 Reel</button>
+                  <button class="cal-chip post" data-fmt="post" onclick="spSelFmt(this)">📷 Post</button>
+                  <button class="cal-chip story" data-fmt="story" onclick="spSelFmt(this)">⚡ Story</button>
+                  <button class="cal-chip carrossel" data-fmt="carrossel" onclick="spSelFmt(this)">📑 Carrossel</button>
+                </div>
+              </div>
+              <div class="cal-side-field">
+                <label>Plataforma</label>
+                <div class="cal-chip-row" id="spPlatRow">
+                  <button class="cal-chip sel" data-plat="instagram" onclick="spSelPlat(this)">📸 Instagram</button>
+                  <button class="cal-chip" data-plat="tiktok" onclick="spSelPlat(this)">🎵 TikTok</button>
+                  <button class="cal-chip" data-plat="facebook" onclick="spSelPlat(this)">👥 Facebook</button>
+                  <button class="cal-chip" data-plat="whatsapp" onclick="spSelPlat(this)">💬 WhatsApp</button>
+                </div>
+              </div>
+              <div class="cal-side-sep"></div>
+              <button class="btn btn-primary" style="width:100%" onclick="scheduleViaAgent()">
+                ✨ Agendar com DM IA
+              </button>
+              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="scheduleManual()">
+                + Adicionar manualmente
+              </button>
             </div>
           </div>
-          <div class="cal-grid-wrap">
-            <div class="cal-weekdays"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div>
-            <div class="cal-grid" id="calGrid"></div>
-          </div>
-          <div class="cal-upcoming" id="calUpcoming"></div>
         </div>
 
         <!-- PRODUÇÃO -->
@@ -964,6 +1031,24 @@ h1 em{font-style:normal;color:var(--primary);}
               <div class="status-row" style="margin-top:13px"><span>🧠</span>Contexto: diagnóstico + perfil de vendas.</div>
             </div>
           </div>
+        </div>
+
+        <!-- METAS COMERCIAIS -->
+        <div class="sales-goals-section" id="salesGoalsSection">
+          <h3>🎯 Metas Comerciais</h3>
+          <p style="font-size:.84rem;color:var(--muted);margin-bottom:16px;">Defina metas de resultado para acompanhar sua evolução comercial.</p>
+          <div class="sales-goal-form cf">
+            <div class="sgf-field">
+              <label>Meta</label>
+              <input type="text" id="sgLabel" placeholder="Ex.: Vendas concluídas, Leads abordados..."/>
+            </div>
+            <div class="sgf-field">
+              <label>Objetivo</label>
+              <input type="number" id="sgTarget" placeholder="Qtd." min="1"/>
+            </div>
+            <button class="btn btn-success btn-sm" onclick="addSalesGoal()" style="align-self:end">+ Adicionar</button>
+          </div>
+          <div id="salesGoalsList"></div>
         </div>
       </div>
 
@@ -1211,10 +1296,11 @@ const S = {
   calSelectedDate: null,
   calEditingId: null,
   calEventFmt: 'post',
-  calEventPlat: 'instagram'
+  calEventPlat: 'instagram',
+  salesGoals: []  // [{id, tipo, target, done, label}]
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v21';
+const SKEY = 'dm_v22';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -1237,7 +1323,7 @@ function save(){
     salesAnswers:S.salesAnswers, financial:S.financial,
     categories:S.categories, contacts:S.contacts, products:S.products,
     evoHistory:S.evoHistory, ci:S.ci, companyId:S.companyId,
-    mktGoals:S.mktGoals, contentCalendar:S.contentCalendar
+    mktGoals:S.mktGoals, contentCalendar:S.contentCalendar, salesGoals:S.salesGoals
   }));}catch(e){}
 }
 function load(){
@@ -1258,6 +1344,7 @@ function load(){
     if(d.companyId) S.companyId=d.companyId;
     if(d.mktGoals)  S.mktGoals=d.mktGoals||{week:null,month:null};
     if(d.contentCalendar) S.contentCalendar=d.contentCalendar||{};
+    if(d.salesGoals) S.salesGoals=d.salesGoals||[];
   }catch(e){}
 }
 
@@ -1778,6 +1865,7 @@ function renderSalesState(){
   $('sSummary').textContent=S.salesProfile.summary;
   $('sWeaknesses').innerHTML=S.salesProfile.weaknesses.map(i=>`<li>${i}</li>`).join('');
   $('sActions').innerHTML=S.salesProfile.actions.map(i=>`<li>${i}</li>`).join('');
+  renderSalesGoals();
 }
 
 /* ═══════════════ FINANCEIRO ═══════════════ */
@@ -2103,6 +2191,7 @@ function renderActiveModule(){
   const am=document.getElementById(`module-${S.activeMod}`); if(am) am.classList.add('active');
   const ab=document.querySelector(`.sb-btn[data-mod="${S.activeMod}"]`); if(ab) ab.classList.add('active');
   if(S.activeMod==='financeiro'){renderFinOverview();renderFinAlerts();refreshCatLists();}
+  if(S.activeMod==='vendas'){renderSalesGoals();}
   if(S.activeMod==='evolucao') renderEvo();
   if(S.activeMod==='marketing'){renderMktProgressCards();renderCalendar();}
 }
@@ -2128,7 +2217,7 @@ async function mktReply(p){
   // Try Gemini first
   if(supa&&S.user){
     const badge=$('mktAiBadge');
-    if(badge) badge.innerHTML='⟳ Consultando IA...';
+    if(badge) badge.textContent='⟳ Consultando DM IA...';
     const resp=await callAgentGemini(p);
     if(resp){
       if(badge){badge.textContent='● DM IA';badge.className='ai-badge live';}
@@ -2375,7 +2464,7 @@ function switchMktTab(tab){
   document.querySelectorAll('.mkt-tab').forEach(t=>t.classList.toggle('active',t.dataset.mtab===tab));
   document.querySelectorAll('.mkt-panel').forEach(p=>p.classList.toggle('active',p.id===`mktpanel-${tab}`));
   if(tab==='calendario') renderCalendar();
-  if(tab==='metas'){renderGoals();renderMktProgressCards();}
+  if(tab==='metas'){renderMktMetasPanel();}
   if(tab==='producao') renderProd();
 }
 
@@ -2449,15 +2538,41 @@ async function callAgentGemini(prompt){
   try{
     const res=await fetch(`${SUPABASE_URL}/functions/v1/agente-cliente`,{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':`Bearer ${SUPABASE_ANON_KEY}`,
-        'apikey':SUPABASE_ANON_KEY
-      },
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY},
       body:JSON.stringify({prompt,context:buildAgentContext()})
     });
-    if(!res.ok){console.error('Edge fn HTTP error:',res.status);return null;}
+    if(!res.ok){console.error('Edge fn error:',res.status);return null;}
     const data=await res.json();
+    // Handle structured response with acoes
+    if(data?.acoes){
+      // Execute calendar actions directly
+      const ac=data.acoes;
+      if(ac.calendario&&Array.isArray(ac.calendario)&&ac.calendario.length){
+        let added=0;
+        ac.calendario.forEach(item=>{
+          if(!item.data) return;
+          const ev={id:uuid(),titulo:item.titulo||'Conteúdo',descricao:item.descricao||'',
+            hora:item.hora||'09:00',formato:(item.formato||'post').toLowerCase(),
+            type:(item.formato||'post').toLowerCase(),plataforma:(item.plataforma||'instagram').toLowerCase(),
+            status:'agendado',note:item.titulo||'Conteúdo'};
+          if(!S.contentCalendar[item.data]) S.contentCalendar[item.data]=[];
+          S.contentCalendar[item.data].push(ev); added++;
+        });
+        if(added){save();renderCalendar();renderMktProgressCards();recalcMaturity();
+          setTimeout(()=>toast(`${added} conteúdo(s) adicionado(s) ao calendário!`,'success','DM IA'),500);}
+      }
+      // Execute meta actions
+      if(ac.meta_semana?.quantidade>0&&!S.mktGoals?.week){
+        if(!S.mktGoals) S.mktGoals={};
+        S.mktGoals.week={target:ac.meta_semana.quantidade,label:ac.meta_semana.descricao||`${ac.meta_semana.quantidade} conteúdos/semana`,done:0};
+        save();
+      }
+      if(ac.meta_mes?.quantidade>0&&!S.mktGoals?.month){
+        if(!S.mktGoals) S.mktGoals={};
+        S.mktGoals.month={target:ac.meta_mes.quantidade,label:ac.meta_mes.descricao||`${ac.meta_mes.quantidade} conteúdos/mês`,done:0};
+        save();
+      }
+    }
     return data?.response||null;
   }catch(e){console.error('Gemini agent:',e);return null;}
 }
@@ -2636,6 +2751,7 @@ function saveCalEvent(){
   }
   // Se publicado, atualiza progresso das metas
   if(ev.status==='publicado') updateGoalProgress();
+  renderMktMetasPanel();
   save(); renderCalendar(); renderMktProgressCards(); recalcMaturity();
   closeCalEvent();
   toast(`"${titulo}" salvo no calendário!`,'success');
@@ -2921,6 +3037,176 @@ function detectAndExecuteActions(responseText){
   return null;
 }
 
+
+/* ═══════════════ CALENDAR SIDE PANEL ═══════════════ */
+let spFmt='reel', spPlat='instagram';
+
+function spSelFmt(btn){
+  spFmt=btn.dataset.fmt;
+  document.querySelectorAll('#spFmtRow .cal-chip').forEach(b=>{
+    b.className='cal-chip '+b.dataset.fmt;
+    if(b.dataset.fmt===spFmt) b.classList.add('sel');
+  });
+}
+function spSelPlat(btn){
+  spPlat=btn.dataset.plat;
+  document.querySelectorAll('#spPlatRow .cal-chip').forEach(b=>{
+    b.className='cal-chip';
+    if(b.dataset.plat===spPlat) b.classList.add('sel');
+  });
+}
+
+async function scheduleViaAgent(){
+  const data=$('spData').value;
+  const hora=$('spHora').value||'09:00';
+  const tema=$('spTema').value.trim();
+  if(!data){toast('Selecione uma data.','error');return;}
+  const dt=new Date(data+'T00:00:00');
+  const dateLabel=`${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`;
+  const prompt=`Crie um conteúdo para agendar no calendário com os seguintes dados exatos:
+- Data: ${dateLabel} (formato YYYY-MM-DD: ${data})
+- Hora: ${hora}
+- Formato: ${spFmt}
+- Plataforma: ${spPlat}
+${tema?`- Tema sugerido: ${tema}`:'- Sugira um tema relevante baseado no diagnóstico da empresa'}
+
+Responda com:
+1. Um parágrafo com o roteiro/ideia do conteúdo
+2. O bloco JSON para registrar no calendário`;
+  // Switch to agente tab and send
+  switchMktTab('agente');
+  setTimeout(async()=>{
+    addMsg($('mktChat'),`Agendar ${spFmt} no Instagram para ${dateLabel} às ${hora}${tema?' — '+tema:''}`, 'user');
+    const dot=document.createElement('div'); dot.className='msg ai';
+    dot.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+    $('mktChat').appendChild(dot); $('mktChat').scrollTop=$('mktChat').scrollHeight;
+    const reply=await mktReply(prompt);
+    dot.remove(); addMsg($('mktChat'),reply||'Não consegui processar.','ai');
+    if(reply) detectAndExecuteActions(reply);
+    // Clear fields
+    $('spData').value=''; $('spTema').value='';
+  },100);
+}
+
+function scheduleManual(){
+  const data=$('spData').value;
+  if(!data){toast('Selecione uma data primeiro.','error');return;}
+  S.calSelectedDate=data; S.calEditingId=null;
+  const dt=new Date(data+'T00:00:00');
+  $('calEventCardTitle').textContent=`${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`;
+  $('cevData').value=data;
+  $('cevTitulo').value=$('spTema').value||'';
+  $('cevHora').value=$('spHora').value||'09:00';
+  $('cevStatus').value='agendado';
+  S.calEventFmt=spFmt; S.calEventPlat=spPlat;
+  updateFmtBtns(); updatePlatBtns();
+  $('cevDeleteBtn').style.display='none';
+  $('calOverlay').classList.remove('hidden');
+  $('calEventCard').classList.remove('hidden');
+}
+
+/* ═══════════════ SALES GOALS ═══════════════ */
+function addSalesGoal(){
+  const label=$('sgLabel').value.trim();
+  const target=parseInt($('sgTarget').value);
+  if(!label){toast('Informe o nome da meta.','error');return;}
+  if(!target||target<=0){toast('Informe um objetivo numérico.','error');return;}
+  S.salesGoals.push({id:uuid(),label,target,done:0});
+  $('sgLabel').value=''; $('sgTarget').value='';
+  save(); renderSalesGoals(); recalcMaturity();
+  toast(`Meta "${label}" criada!`,'success');
+}
+
+function markSalesGoal(id){
+  const g=S.salesGoals.find(g=>g.id===id); if(!g) return;
+  g.done=Math.min(g.done+1,g.target);
+  save(); renderSalesGoals(); recalcMaturity();
+  if(g.done>=g.target) toast(`Meta "${g.label}" concluída! 🎉`,'success');
+}
+
+function removeSalesGoal(id){
+  S.salesGoals=S.salesGoals.filter(g=>g.id!==id);
+  save(); renderSalesGoals(); recalcMaturity();
+}
+
+function renderSalesGoals(){
+  const el=$('salesGoalsList'); if(!el) return;
+  if(!S.salesGoals.length){
+    el.innerHTML='<div class="empty-state" style="padding:14px"><p>Nenhuma meta comercial definida ainda.</p></div>'; return;
+  }
+  el.innerHTML=S.salesGoals.map(g=>{
+    const pct=Math.round((g.done/g.target)*100);
+    const done=g.done>=g.target;
+    return`<div class="sales-goal-item">
+      <div class="sgi-top">
+        <span class="sgi-label">${g.label}</span>
+        <span class="sgi-count">${g.done}/${g.target}</span>
+      </div>
+      <div class="sgi-bar-track"><div class="sgi-bar-fill" style="width:${pct}%"></div></div>
+      <div class="sgi-actions">
+        ${!done?`<button class="btn btn-success btn-sm" onclick="markSalesGoal('${g.id}')">+ Marcar concluído</button>`:'<span style="font-size:.8rem;color:var(--success);font-weight:700">✅ Meta concluída!</span>'}
+        <button class="btn btn-ghost btn-sm" onclick="removeSalesGoal('${g.id}')">Remover</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════ MATURIDADE v22 ═══════════════ */
+function calcMaturityScore(){
+  let score=0;
+  const txns=S.financial.transactions;
+  const now=new Date();
+  const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const agendados=Object.entries(S.contentCalendar).filter(([d])=>d.startsWith(thisMonth)).reduce((a,[,v])=>a+v.length,0);
+  const publicados=Object.values(S.contentCalendar).flat().filter(e=>e.status==='publicado').length;
+  const goalsDefinidas=S.salesGoals.length;
+  const goalsConcluidas=S.salesGoals.filter(g=>g.done>=g.target).length;
+
+  if(S.diag) score+=20;                                          // Diagnóstico estratégico
+  if(S.salesProfile) score+=15;                                  // Diagnóstico de vendas
+  if(txns.length>=1) score+=10;                                  // 1ª transação
+  if(txns.length>=5) score+=5;                                   // 5+ transações
+  if(S.contacts.filter(c=>c.tipo==='cliente').length>=1) score+=5; // Cliente cadastrado
+  if(S.products.length>=1) score+=5;                             // Produto cadastrado
+  if(agendados>=3) score+=10;                                    // 3+ conteúdos agendados
+  score+=Math.min(publicados*2,10);                              // Publicados (máx 10)
+  if(goalsDefinidas>=1) score+=5;                                // Meta comercial definida
+  score+=Math.min(goalsConcluidas*5,15);                         // Metas concluídas (máx 15)
+  return Math.min(100,score);
+}
+
+/* ═══════════════ METAS PANEL UPDATE ═══════════════ */
+function renderMktMetasPanel(){
+  const el=$('mktProgressCards'); if(!el) return;
+  const now=new Date();
+  const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const agendados=Object.entries(S.contentCalendar).filter(([d])=>d.startsWith(thisMonth)).reduce((a,[,v])=>a+v.length,0);
+  const publicados=Object.entries(S.contentCalendar).filter(([d])=>d.startsWith(thisMonth)).reduce((a,[,v])=>a+v.filter(e=>e.status==='publicado').length,0);
+  const total=Object.values(S.contentCalendar).flat().length;
+  el.innerHTML=`
+    <div class="mkt-prog-card"><div class="mkt-prog-val">${agendados}</div><div class="mkt-prog-lbl">Agendados esse mês</div></div>
+    <div class="mkt-prog-card"><div class="mkt-prog-val">${publicados}</div><div class="mkt-prog-lbl">Publicados esse mês</div></div>
+    <div class="mkt-prog-card"><div class="mkt-prog-val">${total}</div><div class="mkt-prog-lbl">Total no calendário</div></div>`;
+  // Published list
+  const pubEl=$('mktPubList'); if(!pubEl) return;
+  const pubItems=[];
+  Object.entries(S.contentCalendar).filter(([d])=>d.startsWith(thisMonth)).forEach(([d,evs])=>{
+    evs.filter(e=>e.status==='publicado').forEach(e=>{
+      const dt=new Date(d+'T00:00:00');
+      pubItems.push({d,dt,e});
+    });
+  });
+  if(!pubItems.length){pubEl.innerHTML='<div class="empty-state" style="padding:12px"><p>Nenhum conteúdo publicado ainda esse mês.</p></div>';return;}
+  pubEl.innerHTML=pubItems.sort((a,b)=>a.dt-b.dt).map(({d,dt,e})=>`
+    <div class="cal-upcoming-item">
+      <span class="cal-upcoming-date">${dt.getDate()}/${dt.getMonth()+1}</span>
+      <div class="cal-day-dot ${e.formato||'post'}" style="flex-shrink:0"></div>
+      <span style="flex:1;font-size:.82rem">${e.titulo||'Conteúdo'}</span>
+      <span style="font-size:.74rem;color:var(--muted)">${e.plataforma||''}</span>
+      <span class="cal-status-badge publicado">✅ pub</span>
+    </div>`).join('');
+}
+
 /* ═══════════════ INIT ═══════════════ */
 load();
 // Verificar sessão ativa no Supabase e restaurar login automaticamente
@@ -2966,6 +3252,10 @@ addMsg($('mktChat'),'Olá! Sou o DigitalMind Marketing com IA. Posso orientar es
 initEvoPeriods();
 renderCalendar();
 renderProd();
+renderSalesGoals();
+// Default side panel date to today
+const todayISO=new Date().toISOString().split('T')[0];
+if($('spData')) $('spData').value=todayISO;
 if(S.diag){ renderResultado(); renderDashboard(); renderActionTrail(); }
 if(S.mktGoals?.week||S.mktGoals?.month) renderGoals();
 refreshCatLists();
