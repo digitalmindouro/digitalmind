@@ -233,8 +233,8 @@ h1 em{font-style:normal;color:var(--primary);}
 
 /* ── CHAT ── */
 .chat-layout{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;}
-.chat-box{min-height:260px;max-height:340px;border-radius:16px;padding:14px;overflow-y:auto;background:rgba(255,255,255,.03);border:1px solid var(--border);display:flex;flex-direction:column;gap:9px;}
-.msg{max-width:86%;padding:11px 14px;border-radius:14px;line-height:1.6;font-size:.86rem;animation:msgIn .2s ease;}
+.chat-box{min-height:320px;max-height:520px;border-radius:16px;padding:14px;overflow-y:auto;background:rgba(255,255,255,.03);border:1px solid var(--border);display:flex;flex-direction:column;gap:9px;scroll-behavior:smooth;}
+.msg{max-width:88%;padding:12px 15px;border-radius:14px;line-height:1.65;font-size:.86rem;animation:msgIn .2s ease;word-break:break-word;white-space:pre-wrap;}
 @keyframes msgIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 .msg.ai{background:rgba(75,140,255,.09);border:1px solid rgba(75,140,255,.16);align-self:flex-start;border-bottom-left-radius:3px;}
 .msg.user{background:rgba(255,255,255,.06);border:1px solid var(--border);align-self:flex-end;border-bottom-right-radius:3px;}
@@ -719,10 +719,11 @@ h1 em{font-style:normal;color:var(--primary);}
         <div class="mkt-panel active" id="mktpanel-agente">
           <div class="chat-layout">
             <div class="card">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                 <h3>Converse com o agente</h3>
                 <span class="ai-badge" id="mktAiBadge">● IA Local</span>
               </div>
+              <div id="matrixStatus" style="font-size:.74rem;color:var(--muted);margin-bottom:11px;display:flex;gap:10px;flex-wrap:wrap;"></div>
               <div class="chat-box" id="mktChat"></div>
               <div class="chat-input-row">
                 <input id="mktInput" type="text" placeholder="Pergunte sobre marketing, conteúdo ou estratégia..."/>
@@ -2266,12 +2267,59 @@ function buildAgentContext(){
     .filter(([d])=>new Date(d+'T00:00:00')>=today)
     .sort(([a],[b])=>new Date(a)-new Date(b)).slice(0,10)
     .map(([d,v])=>({data:d,conteudos:v}));
+  // Atualiza indicador de matrix
+  const ms=$('matrixStatus');
+  if(ms){
+    const items=[
+      S.diag?'✅ Diagnóstico':'⬜ Sem diagnóstico',
+      S.salesProfile?'✅ Vendas':'⬜ Sem vendas',
+      txns.length?`✅ ${txns.length} transações`:'⬜ Sem financeiro',
+      upcoming.length?`✅ ${upcoming.length} agendados`:'⬜ Sem calendário'
+    ];
+    ms.innerHTML=items.map(i=>`<span style="opacity:.7">${i}</span>`).join('');
+  }
   return{
-    empresa:{nome:S.formData.companyName,segmento:S.formData.segment,cidade:S.formData.city,tempo_mercado:S.formData.marketTime},
-    diagnostico:S.diag?{score:S.diag.sc,overview:S.diag.overview,gargalos:S.diag.gaps,prioridades:S.diag.priorities,direcionamento:S.diag.direction}:null,
-    vendas:S.salesProfile?{resumo:S.salesProfile.summary,travas:S.salesProfile.weaknesses,acoes:S.salesProfile.actions}:null,
-    financeiro:{receitas:rec,despesas:dep,saldo:rec-dep},
-    marketing:{meta_semana:S.mktGoals?.week||null,meta_mes:S.mktGoals?.month||null,agendados:upcoming.length,proximos:upcoming.slice(0,5)}
+    empresa:{
+      nome:S.formData.companyName||'não informado',
+      segmento:S.formData.segment||'não informado',
+      cidade:S.formData.city||'não informada',
+      tempo_mercado:S.formData.marketTime||'não informado',
+      como_vende:S.formData.salesModel||'não informado',
+      dificuldade_principal:S.formData.mainDifficulty||'não informada',
+      objetivo:S.formData.mainGoal||'não informado',
+      presenca_digital:S.formData.digitalPresence||'não informada'
+    },
+    diagnostico:S.diag?{
+      score:S.diag.sc,
+      visao_geral:S.diag.overview,
+      gargalos:S.diag.gaps,
+      prioridades:S.diag.priorities,
+      direcionamento:S.diag.direction,
+      proximo_passo:S.diag.nextMove,
+      resumo:S.diag.summary
+    }:null,
+    vendas:S.salesProfile?{
+      resumo:S.salesProfile.summary,
+      principais_travas:S.salesProfile.weaknesses,
+      acoes_recomendadas:S.salesProfile.actions,
+      respostas:S.salesProfile.answers
+    }:null,
+    financeiro:{
+      total_receitas:rec,
+      total_despesas:dep,
+      saldo_atual:rec-dep,
+      qtd_lancamentos:txns.length,
+      categorias_despesa:[...new Set(txns.filter(t=>t.tipo==='despesa').map(t=>t.cat).filter(Boolean))]
+    },
+    marketing:{
+      meta_semana:S.mktGoals?.week||null,
+      meta_mes:S.mktGoals?.month||null,
+      conteudos_agendados:upcoming.length,
+      proximos_agendamentos:upcoming.slice(0,5),
+      clientes:S.contacts.filter(c=>c.tipo==='cliente').length,
+      fornecedores:S.contacts.filter(c=>c.tipo==='fornecedor').length,
+      produtos:S.products.length
+    }
   };
 }
 async function callAgentGemini(prompt){
