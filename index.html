@@ -631,8 +631,8 @@ h1 em{font-style:normal;color:var(--primary);}
 <div id="toastRoot"></div>
 
 <!-- Calendar Popup for scheduling -->
-<div class="cal-event-overlay hidden" id="calPopupOverlay" onclick="closeCalendarPopup()"></div>
-<div class="cal-popup-modal hidden" id="calPopupModal" onclick="event.stopPropagation()">
+<div class="cal-event-overlay hidden" id="calPopupOverlay" onclick="closeCalendarPopup()">
+<div class="cal-popup-modal" id="calPopupModal" onclick="event.stopPropagation()">
   <div class="cal-popup-header">
     <h3>📅 Escolha o dia do conteúdo</h3>
     <button class="cal-popup-close" onclick="closeCalendarPopup()">✕</button>
@@ -653,10 +653,11 @@ h1 em{font-style:normal;color:var(--primary);}
     </div>
   </div>
 </div>
+</div><!-- /calPopupOverlay -->
 
 <!-- Calendar Event Card Modal -->
-<div class="cal-event-overlay hidden" id="calOverlay" onclick="closeCalEvent()"></div>
-<div class="cal-event-card hidden" id="calEventCard" onclick="event.stopPropagation()">
+<div class="cal-event-overlay hidden" id="calOverlay" onclick="closeCalEvent()">
+<div class="cal-event-card" id="calEventCard" onclick="event.stopPropagation()">
   <h3>📅 <span id="calEventCardTitle">Novo conteúdo</span></h3>
   <div class="cal-event-grid">
     <div class="cal-event-field full">
@@ -707,6 +708,7 @@ h1 em{font-style:normal;color:var(--primary);}
     <button class="btn-danger-xs" id="cevDeleteBtn" onclick="deleteCalEvent()" style="display:none">Apagar</button>
   </div>
 </div>
+</div><!-- /calOverlay -->
 
 <!-- Priority Modal -->
 <div class="modal-overlay" id="priorityModal">
@@ -2742,9 +2744,9 @@ function renderCalendar(){
 
 /* ── Event Card Modal ── */
 function openCalEvent(ds, eventId){
-  // ALWAYS move to body first — overflow:auto on ancestors breaks fixed positioning
-  const overlay=$('calOverlay'); const card=$('calEventCard');
-  document.body.appendChild(overlay); document.body.appendChild(card);
+  // Move overlay to body — card is inside overlay, moves with it
+  const overlay=$('calOverlay');
+  if(overlay) document.body.appendChild(overlay);
   S.calSelectedDate=ds;
   S.calEditingId=eventId||null;
   const dt=new Date(ds+'T00:00:00');
@@ -2766,13 +2768,11 @@ function openCalEvent(ds, eventId){
   }
   updateFmtBtns(); updatePlatBtns();
   $('calOverlay').classList.remove('hidden');
-  $('calEventCard').classList.remove('hidden');
   setTimeout(()=>$('cevTitulo').focus(),80);
 }
 
 function closeCalEvent(){
   $('calOverlay').classList.add('hidden');
-  $('calEventCard').classList.add('hidden');
   S.calSelectedDate=null; S.calEditingId=null;
 }
 
@@ -3118,10 +3118,8 @@ function openAgendarFromChat(text){
   S.calEventFmt=fmt; S.calEventPlat='instagram';
   updateFmtBtns(); updatePlatBtns();
   $('cevDeleteBtn').style.display='none';
-  document.body.appendChild($('calOverlay'));
-  document.body.appendChild($('calEventCard'));
+  const _ao=$('calOverlay'); if(_ao) document.body.appendChild(_ao);
   $('calOverlay').classList.remove('hidden');
-  $('calEventCard').classList.remove('hidden');
   setTimeout(()=>$('cevTitulo').focus(),80);
 }
 
@@ -3423,18 +3421,15 @@ let popupYear=new Date().getFullYear(), popupMonth=new Date().getMonth();
 
 function openCalendarPopup(){
   popupYear=S.calYear; popupMonth=S.calMonth;
-  // ALWAYS move to body — overflow:auto on ancestors breaks fixed positioning
-  const po=$('calPopupOverlay'); const pm=$('calPopupModal');
+  // Move overlay to body — popup modal is inside it
+  const po=$('calPopupOverlay');
   if(po) document.body.appendChild(po);
-  if(pm) document.body.appendChild(pm);
   renderCalendarPopup();
   $('calPopupOverlay').classList.remove('hidden');
-  $('calPopupModal').classList.remove('hidden');
 }
 
 function closeCalendarPopup(){
   $('calPopupOverlay').classList.add('hidden');
-  $('calPopupModal').classList.add('hidden');
 }
 
 function navCalPopup(dir){
@@ -3472,10 +3467,9 @@ function renderCalendarPopup(){
 
 function pickDayForSchedule(ds, dayNum){
   closeCalendarPopup();
-  // ALWAYS move to body
-  const _ov=$('calOverlay'); const _cd=$('calEventCard');
+  // Move overlay to body (card is inside it)
+  const _ov=$('calOverlay');
   if(_ov) document.body.appendChild(_ov);
-  if(_cd) document.body.appendChild(_cd);
   // Open the event card for this day
   S.calSelectedDate=ds; S.calEditingId=null;
   $('calEventCardTitle').textContent=`Novo conteúdo — dia ${dayNum}`;
@@ -3488,7 +3482,6 @@ function pickDayForSchedule(ds, dayNum){
   updateFmtBtns(); updatePlatBtns();
   $('cevDeleteBtn').style.display='none';
   $('calOverlay').classList.remove('hidden');
-  $('calEventCard').classList.remove('hidden');
   setTimeout(()=>$('cevTitulo').focus(),80);
 }
 
@@ -3548,8 +3541,8 @@ if(S.diag){ renderResultado(); renderDashboard(); renderActionTrail(); }
 refreshCatLists();
 testSupa();
 // Move all modals to body on init to prevent positioning issues
-// Move all modals to body immediately
-['calOverlay','calEventCard','calPopupOverlay','calPopupModal'].forEach(id=>{
+// Move overlays to body (cards are nested inside overlays)
+['calOverlay','calPopupOverlay'].forEach(id=>{
   const el=$(id); if(el) document.body.appendChild(el);
 });
 
