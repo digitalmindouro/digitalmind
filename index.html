@@ -505,12 +505,13 @@ h1 em{font-style:normal;color:var(--primary);}
 
 
 /* ══ CALENDAR EVENT CARD ══ */
-.cal-event-card{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;
+.cal-event-card{position:relative;z-index:9999;
   width:min(520px,94vw);max-height:88vh;overflow-y:auto;
   background:linear-gradient(180deg,rgba(10,22,48,.99),rgba(6,16,38,.97));
   border:1px solid rgba(168,85,247,.3);border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.7);
   animation:fadeUp .2s ease both;}
-.cal-event-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9998;}
+.cal-event-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;}
+#calPopupOverlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;}
 /* cal-event-overlay defined in new CSS block */
 .cal-event-card h3{font-size:1rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
 .cal-event-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
@@ -605,8 +606,7 @@ h1 em{font-style:normal;color:var(--primary);}
 
 /* ══ CALENDAR POPUP MODAL ══ */
 .cal-popup-modal{
-  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  z-index:9999;width:min(680px,96vw);max-height:92vh;overflow-y:auto;
+  position:relative;z-index:9999;width:min(680px,96vw);max-height:92vh;overflow-y:auto;
   background:linear-gradient(180deg,rgba(8,18,42,.99),rgba(4,12,30,.98));
   border:1px solid rgba(168,85,247,.25);border-radius:24px;
   box-shadow:0 30px 80px rgba(0,0,0,.7);animation:fadeUp .2s ease both;
@@ -632,7 +632,7 @@ h1 em{font-style:normal;color:var(--primary);}
 
 <!-- Calendar Popup for scheduling -->
 <div class="cal-event-overlay hidden" id="calPopupOverlay" onclick="closeCalendarPopup()"></div>
-<div class="cal-popup-modal hidden" id="calPopupModal">
+<div class="cal-popup-modal hidden" id="calPopupModal" onclick="event.stopPropagation()">
   <div class="cal-popup-header">
     <h3>📅 Escolha o dia do conteúdo</h3>
     <button class="cal-popup-close" onclick="closeCalendarPopup()">✕</button>
@@ -656,7 +656,7 @@ h1 em{font-style:normal;color:var(--primary);}
 
 <!-- Calendar Event Card Modal -->
 <div class="cal-event-overlay hidden" id="calOverlay" onclick="closeCalEvent()"></div>
-<div class="cal-event-card hidden" id="calEventCard">
+<div class="cal-event-card hidden" id="calEventCard" onclick="event.stopPropagation()">
   <h3>📅 <span id="calEventCardTitle">Novo conteúdo</span></h3>
   <div class="cal-event-grid">
     <div class="cal-event-field full">
