@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v31</title>
+<title>DigitalMind v32</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1454,7 +1454,7 @@ const S = {
   _lastAgentAcoes: null
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v31';
+const SKEY = 'dm_v32';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -2097,13 +2097,14 @@ function renderSalesDots(){
 }
 function renderSalesStep(){
   const n=S.salesStep; const t=SALES_QS.length; const pct=((n+1)/t)*100;
-  $('sProgLabel').textContent=`Pergunta ${n+1} de ${t}`;$('sProgBar').style.width=`${pct}%`;
-  $('sQLabel').textContent=`Pergunta ${n+1} de ${t}`;$('sQTitle').textContent=SALES_QS[n];
-  $('sQTextarea').value=S.salesAnswers[n]||'';
-  $('sPrevBtn').style.visibility=n===0?'hidden':'visible';
-  $('sNextBtn').textContent=n===t-1?'Salvar diagnóstico ✓':'Próxima →';
-  $('sHint').textContent=n===t-1?'Última pergunta. Salve para liberar o agente.':'Responda e avance para a próxima.';
-  renderSalesDots(); setTimeout(()=>$('sQTextarea').focus(),80);
+  if($('sStepLabel')) $('sStepLabel').textContent=`Pergunta ${n+1} de ${t}`;
+  if($('sProgBar')) $('sProgBar').style.width=`${pct}%`;
+  if($('sStepTag')) $('sStepTag').textContent=`PERGUNTA ${n+1} DE ${t}`;
+  if($('sQuestion')) $('sQuestion').textContent=SALES_QS[n];
+  if($('sQTextarea')){$('sQTextarea').value=S.salesAnswers[n]||''; setTimeout(()=>$('sQTextarea').focus(),80);}
+  if($('sPrevBtn')) $('sPrevBtn').style.visibility=n===0?'hidden':'visible';
+  if($('sNextBtn')) $('sNextBtn').textContent=n===t-1?'Salvar diagnóstico ✓':'Próxima →';
+  renderSalesDots();
 }
 function analyzeSales(answers){
   const j=answers.join(' ').toLowerCase(); const w=[],a=[];
@@ -3074,6 +3075,7 @@ $('nextBtn').addEventListener('click', async ()=>{
   }
 
   pushEvoHistory(calcMaturityScore()); save();
+  autoSaveCalendar(); // persiste diag + formData no Supabase
   renderResultado();
   btn.disabled=false; btn.textContent='Gerar leitura estratégica →';
   goToStep('resultado');
@@ -3635,7 +3637,7 @@ function recalcMaturity(){
   // Store separately — never overwrite S.diag.sc (formulário score)
   S.maturityRealScore=score;
   // Update maturity displays only (not the diag ring which shows formulário score)
-  if($('topScore')) $('topScore').textContent=`${score}%`;
+  // topScore removed from layout
   if($('mTrend')){
     $('mTrend').textContent=score>=70?'▲ Boa base estrutural':score>=50?'● Em construção':'● Requer estruturação';
     $('mTrend').className=`metric-trend ${score>=70?'up':'neutral'}`;
@@ -3782,8 +3784,7 @@ function openAgendarFromChat(text){
 }
 
 async function scheduleConversation(){
-  const statusEl=$('spStatusMsg');
-  if(statusEl) statusEl.textContent='⟳ Lendo a conversa...';
+  const statusEl=$('spStatusMsg'); if(statusEl) statusEl.textContent='⟳ Lendo a conversa...';
   
   // Extract all messages from chat
   const chatBox=$('mktChat');
@@ -3853,9 +3854,9 @@ Retorne SOMENTE o JSON com os conteúdos para agendar. Para cada conteúdo use o
 }
 
 async function scheduleViaAgent(){
-  const data=$('spData').value;
-  const hora=$('spHora').value||'09:00';
-  const tema=$('spTema').value.trim();
+  const data=$('spData')?.value||'';
+  const hora=$('spHora')?.value||'09:00';
+  const tema=$('spTema')?.value?.trim()||'';
   if(!data){toast('Selecione uma data.','error');return;}
   const dt=new Date(data+'T00:00:00');
   const dateLabel=`${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`;
@@ -3877,19 +3878,19 @@ Retorne a resposta com o campo acoes.calendario preenchido.`;
     const reply=await callAgentGemini(prompt); // acoes already executed inside callAgentGemini
     dot.remove();
     addMsg($('mktChat'),reply||'Conteúdo agendado! Veja no Calendário.','ai');
-    $('spData').value=''; $('spTema').value='';
+    // sp fields removed
   },100);
 }
 
 function scheduleManual(){
-  const data=$('spData').value;
+  const data=$('spData')?.value||'';
   if(!data){toast('Selecione uma data primeiro.','error');return;}
   S.calSelectedDate=data; S.calEditingId=null;
   const dt=new Date(data+'T00:00:00');
   $('calEventCardTitle').textContent=`${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`;
   $('cevData').value=data;
-  $('cevTitulo').value=$('spTema').value||'';
-  $('cevHora').value=$('spHora').value||'09:00';
+  $('cevTitulo').value=$('spTema')?.value||'';
+  $('cevHora').value=$('spHora')?.value||'09:00';
   $('cevStatus').value='agendado';
   S.calEventFmt=spFmt; S.calEventPlat=spPlat;
   updateFmtBtns(); updatePlatBtns();
@@ -4005,14 +4006,18 @@ function renderMktMetasPanel(){
 async function persistCalendarToSupabase(){
   if(!supa||!S.user||!S.companyId) return;
   try{
-    // Upsert calendar data as single JSON blob in company_intelligence
     await supa.from('company_intelligence').upsert({
       company_id:S.companyId,
       ai_context:{
+        // Dados completos do sistema — nada depende só do localStorage
         contentCalendar:S.contentCalendar,
         salesGoals:S.salesGoals,
+        salesLeads:S.salesLeads||[],
         mktGoals:S.mktGoals,
         maturityRealScore:S.maturityRealScore||0,
+        formData:S.formData,
+        diag:S.diag,
+        salesProfile:S.salesProfile,
         updated_at:new Date().toISOString()
       }
     },{onConflict:'company_id'});
@@ -4026,12 +4031,20 @@ async function loadCalendarFromSupabase(){
       .select('ai_context').eq('company_id',S.companyId).single();
     if(data?.ai_context){
       const ctx=data.ai_context;
-      if(ctx.contentCalendar&&!Object.keys(S.contentCalendar).length)
+      // Restaura tudo do Supabase — fonte de verdade
+      if(ctx.contentCalendar&&!Object.keys(S.contentCalendar||{}).length)
         S.contentCalendar=ctx.contentCalendar;
-      if(ctx.salesGoals?.length&&!S.salesGoals.length)
+      if(ctx.salesGoals?.length&&!S.salesGoals?.length)
         S.salesGoals=ctx.salesGoals;
+      if(ctx.salesLeads?.length&&!S.salesLeads?.length)
+        S.salesLeads=ctx.salesLeads;
       if(ctx.mktGoals) S.mktGoals={...S.mktGoals,...ctx.mktGoals};
       if(ctx.maturityRealScore) S.maturityRealScore=ctx.maturityRealScore;
+      // Dados críticos — restaura se não vieram do Supabase principal
+      if(ctx.formData&&!S.formData?.companyName) S.formData={...S.formData,...ctx.formData};
+      if(ctx.diag&&!S.diag) S.diag=ctx.diag;
+      if(ctx.salesProfile&&!S.salesProfile) S.salesProfile=ctx.salesProfile;
+      save(); // Sincroniza localStorage com dados do Supabase
     }
   }catch(e){console.error('loadCalendarFromSupabase:',e);}
 }
@@ -4063,9 +4076,8 @@ function showScheduleSuggestion(calItems){
 function prefillPanelFromAgent(){
   if(!S._lastAgentAcoes?.calendario?.length) return;
   const first=S._lastAgentAcoes.calendario[0];
-  if(first.data) $('spData').value=first.data;
-  if(first.hora) $('spHora').value=first.hora;
-  if(first.titulo) $('spTema').value=first.titulo;
+  // Open cal popup with pre-filled date
+  if(first.data){ S._prefillDate=first; openCalendarPopup(); return; }
   if(first.formato){spFmt=first.formato;document.querySelectorAll('#spFmtRow .cal-chip').forEach(b=>{b.className='cal-chip '+b.dataset.fmt;if(b.dataset.fmt===spFmt)b.classList.add('sel');});}
   if(first.plataforma){spPlat=first.plataforma;document.querySelectorAll('#spPlatRow .cal-chip').forEach(b=>{b.className='cal-chip';if(b.dataset.plat===spPlat)b.classList.add('sel');});}
   toast('Dados do agente carregados no painel!','success');
@@ -4278,7 +4290,7 @@ function saveCrmLead(){
   } else {
     S.salesLeads.push(lead);
   }
-  save(); renderCrmBoard(); recalcMaturity(); closeCrmModal();
+  save(); autoSaveCalendar(); renderCrmBoard(); recalcMaturity(); closeCrmModal();
   toast(`Lead "${name}" salvo!`,'success');
 }
 
@@ -4286,7 +4298,7 @@ function deleteCrmLead(){
   if(!crmEditingId) return;
   const lead=(S.salesLeads||[]).find(l=>l.id===crmEditingId);
   S.salesLeads=(S.salesLeads||[]).filter(l=>l.id!==crmEditingId);
-  save(); renderCrmBoard(); recalcMaturity(); closeCrmModal();
+  save(); autoSaveCalendar(); renderCrmBoard(); recalcMaturity(); closeCrmModal();
   toast(`Lead "${lead?.name||''}" removido.`,'info');
 }
 
@@ -4371,7 +4383,7 @@ renderProd();
 renderSalesGoals();
 // Default side panel date to today
 const todayISO=new Date().toISOString().split('T')[0];
-if($('spData')) $('spData').value=todayISO;
+// spData removed from layout
 if(S.diag){ renderResultado(); renderDashboard(); renderActionTrail(); }
 // renderGoals removed from init — metas simplified to calendar-based reporting
 refreshCatLists();
