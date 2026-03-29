@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v30</title>
+<title>DigitalMind v31</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1454,7 +1454,7 @@ const S = {
   _lastAgentAcoes: null
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v30';
+const SKEY = 'dm_v31';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -1904,18 +1904,94 @@ const PRIORITY_DATA={
   'Clareza de oferta':{icon:'💡',desc:'Seus produtos e serviços precisam ter nome, escopo e preço definidos. O cliente precisa entender o que está comprando.',recs:['Liste todos os seus produtos/serviços com preço, prazo e entregável claro.','Crie uma proposta comercial padrão que você possa enviar em minutos.','Elimine serviços pouco rentáveis ou confusos para o cliente.','Teste a oferta com 3 clientes atuais: eles conseguem explicar o que você faz?']}
 };
 function buildDiag(data){
-  const cn=data.companyName||'Sua empresa',seg=data.segment||'seu mercado',dif=data.mainDifficulty||'crescer com consistência',dig=data.digitalPresence||'presença digital sem clareza',goal=data.mainGoal||'evoluir com mais estrutura',adv=data.desiredAdvance||'mais direção e organização',sc=computeScore(data);
-  const overview=`${cn} demonstra potencial de crescimento, mas ainda opera com sinais de desalinhamento entre esforço, estrutura e direção. Hoje, a empresa atua em ${seg} e convive com ${dif.toLowerCase()}. A leitura inicial mostra que parte da energia investida pode não estar se convertendo em previsibilidade e avanço consistente.`;
-  const gaps=['Falta de clareza estratégica suficiente para sustentar crescimento consistente.','Comunicação e presença ainda sem direção forte para gerar valor contínuo.','Estrutura comercial com sinais de dependência maior de esforço do que de método.'];
-  if(dig.toLowerCase().includes('sem')||dig.toLowerCase().includes('parad'))gaps.push('Presença digital fragilizada ou sem constância estratégica.');
-  const direction=`O próximo passo não deveria ser apenas divulgar mais. Antes disso, o mais importante é organizar o cenário, definir prioridade e construir uma base estratégica compatível com o objetivo de ${goal.toLowerCase()}. O avanço passa por ${adv.toLowerCase()}, com mais método e menos improviso.`;
-  const swot=['Forças: conhecimento prático do próprio negócio, operação real e intenção de crescimento.','Fraquezas: baixa clareza estratégica, possível dependência de improviso e pouca previsibilidade comercial.','Oportunidades: fortalecer posicionamento, organizar processo comercial e estruturar comunicação.','Ameaças: continuar aumentando esforço sem avanço proporcional, perder valor percebido.'];
-  const attention='Se a estrutura continuar como está, a tendência é cobrar mais resultado da execução sem antes corrigir a direção. O problema não parece ser falta de potencial — é esse potencial ainda não estar suficientemente organizado.';
-  const summary=`${cn} tem base para evoluir, mas ainda depende demais de esforço e ajustes pontuais. A próxima fase precisa focar em clareza estratégica, posicionamento e processo mais previsível.`;
-  const priorities=['Direção estratégica','Posicionamento','Processo comercial','Clareza de oferta'];
-  const nextMove='Transformar a leitura inicial em plano aplicado: revisar cenário, priorizar gargalos e organizar uma sequência mais inteligente de execução.';
-  const marketing={core:'Hoje o marketing precisa parar de compensar falta de estrutura e começar a amplificar uma proposta mais clara, coerente e percebida como valiosa.',focus:['Melhorar posicionamento para aumentar valor percebido.','Criar mensagem clara sobre o que a empresa faz e para quem.','Usar conteúdo como construção de confiança, não apenas presença.'],steps:['Definir promessa central da empresa.','Organizar pilares de conteúdo alinhados ao comercial.','Corrigir comunicação que pode estar genérica ou difusa.']};
-  return{overview,gaps,direction,swot,attention,sc,summary,priorities,nextMove,marketing};
+  const cn=data.companyName||'Sua empresa';
+  const seg=data.segment||'não informado';
+  const dif=data.mainDifficulty||'crescer com consistência';
+  const dig=data.digitalPresence||'não informada';
+  const goal=data.mainGoal||'evoluir com mais estrutura';
+  const adv=data.desiredAdvance||'mais direção e organização';
+  const sal=data.salesModel||'não informado';
+  const lead=data.leadSource||'não informado';
+  const diff=data.mainDiff||'não informado';
+  const sc=computeScore(data);
+
+  // ── MATRIZ ESTRUTURADA — base de tudo no sistema
+  const matrix={
+    empresa:{
+      nome:cn,
+      segmento:seg,
+      cidade:data.city||'não informada',
+      tempo_mercado:data.marketTime||'não informado',
+      modelo_venda:sal,
+      canal_principal:lead,
+      dor_central:dif,
+      objetivo_principal:goal,
+      presenca_digital:dig,
+      diferencial:diff,
+      avanco_desejado:adv
+    },
+    comercial:{
+      como_vende:sal,
+      origem_leads:lead,
+      depende_indicacao:sal.toLowerCase().includes('indica')||lead.toLowerCase().includes('indica'),
+      presenca_fraca:dig.toLowerCase().includes('sem')||dig.toLowerCase().includes('parad')||dig.toLowerCase().includes('pouco'),
+      processo_definido:sal.toLowerCase().includes('equipe')||sal.toLowerCase().includes('processo'),
+    },
+    cliente_ideal:{
+      segmento_atendido:seg,
+      dor_que_resolve:dif,
+      resultado_entregue:goal,
+      canal_de_acesso:lead
+    },
+    maturidade:{
+      score:sc,
+      nivel:sc>=70?'Avançado':sc>=55?'Em evolução':sc>=42?'Em construção':'Iniciante'
+    }
+  };
+
+  // ── Gargalos específicos baseados nas respostas reais
+  const gaps=[];
+  if(dif.length>5) gaps.push(`Dificuldade central declarada: ${dif}`);
+  if(matrix.comercial.depende_indicacao) gaps.push('Dependência de indicação como principal fonte de novos clientes — canal passivo e imprevisível.');
+  if(matrix.comercial.presenca_fraca) gaps.push('Presença digital fraca ou sem estratégia — dificulta geração de leads próprios.');
+  if(!matrix.comercial.processo_definido) gaps.push('Processo de venda informal — dificulta escala e previsibilidade de receita.');
+  if(adv.length>5) gaps.push(`Avanço desejado declarado: ${adv}`);
+  if(gaps.length<2) gaps.push('Falta de clareza estratégica para direcionar esforço com método.');
+
+  // ── Prioridades baseadas nas respostas
+  const priorities=[];
+  if(dif.toLowerCase().includes('vender')||dif.toLowerCase().includes('client')) priorities.push('Processo comercial');
+  if(dif.toLowerCase().includes('posicion')||dif.toLowerCase().includes('diferenc')) priorities.push('Posicionamento');
+  if(matrix.comercial.presenca_fraca) priorities.push('Presença digital');
+  if(dif.toLowerCase().includes('organ')||dif.toLowerCase().includes('gestão')||dif.toLowerCase().includes('gestao')) priorities.push('Organização interna');
+  if(!priorities.includes('Direção estratégica')) priorities.unshift('Direção estratégica');
+  if(!priorities.includes('Posicionamento')&&priorities.length<4) priorities.push('Posicionamento');
+  if(!priorities.includes('Clareza de oferta')&&priorities.length<4) priorities.push('Clareza de oferta');
+
+  const overview=`${cn} atua em ${seg} e enfrenta como principal desafio: ${dif.toLowerCase()}. A empresa ${matrix.comercial.depende_indicacao?'depende principalmente de indicações para gerar clientes, o que torna o crescimento imprevisível':'busca estruturar melhor sua geração de clientes'}. ${matrix.comercial.presenca_fraca?'A presença digital ainda não está convertendo em oportunidades reais.':'A presença digital existe mas precisa de mais direção estratégica.'}`;
+
+  const summary=`${cn} tem potencial real, mas o crescimento ainda depende mais de esforço do que de método. A prioridade agora é ${priorities[0].toLowerCase()} — sem isso, qualquer ação de marketing ou vendas vai ter resultado limitado.`;
+
+  const direction=`O próximo passo para ${cn} não é divulgar mais — é definir com clareza para quem você vende, qual problema resolve e qual resultado entrega. Com isso claro, o objetivo de ${goal.toLowerCase()} se torna alcançável com método e menos improviso.`;
+
+  const attention=`Se ${cn} continuar dependendo de ${lead.toLowerCase()} como principal canal, o crescimento vai continuar irregular. O caminho é construir pelo menos um canal ativo de geração de clientes.`;
+
+  const nextMove=`Revisar posicionamento e definir processo mínimo de vendas: quem é o cliente ideal, qual a promessa central e como acompanhar os leads até o fechamento.`;
+
+  const swot=[
+    `Forças: ${diff.length>5?diff:'conhecimento prático do negócio e intenção real de crescimento'}.`,
+    `Fraquezas: ${dif.length>5?dif:'processo comercial ainda dependente de esforço manual e improviso'}.`,
+    `Oportunidades: estruturar geração ativa de clientes e clareza de posicionamento em ${seg}.`,
+    `Ameaças: continuar crescendo por indicação sem construir canal próprio — risco de estagnação.`
+  ];
+
+  const marketing={
+    core:'Marketing precisa amplificar uma proposta clara — não compensar falta de posicionamento.',
+    focus:gaps.slice(0,3),
+    steps:['Definir promessa central da empresa.','Criar conteúdo baseado na dor do cliente ideal.','Construir rotina mínima de presença digital.']
+  };
+
+  return{overview,gaps,direction,swot,attention,sc,summary,priorities,nextMove,marketing,matrix};
 }
 
 /* ═══════════════ RENDER RESULTADO ═══════════════ */
@@ -3119,66 +3195,83 @@ function switchMktTab(tab){
 
 /* ═══════════════ GEMINI AGENT ═══════════════ */
 function buildAgentContext(){
-  const txns=S.financial.transactions;
+  const txns=S.financial.transactions||[];
   const rec=txns.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
   const dep=txns.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
   const today=new Date(); today.setHours(0,0,0,0);
   const upcoming=Object.entries(S.contentCalendar)
     .filter(([d])=>new Date(d+'T00:00:00')>=today)
-    .sort(([a],[b])=>new Date(a)-new Date(b)).slice(0,10)
-    .map(([d,v])=>({data:d,conteudos:v}));
+    .sort(([a],[b])=>new Date(a)-new Date(b)).slice(0,5)
+    .map(([d,v])=>v.map(ev=>({data:d,titulo:ev.titulo,formato:ev.formato}))).flat();
+
   // Atualiza indicador de matrix
   const ms=$('matrixStatus');
   if(ms){
     const items=[
       S.diag?'✅ Diagnóstico':'⬜ Sem diagnóstico',
       S.salesProfile?'✅ Vendas':'⬜ Sem vendas',
-      txns.length?`✅ ${txns.length} transações`:'⬜ Sem financeiro',
+      txns.length?`✅ ${txns.length} lançamentos`:'⬜ Sem financeiro',
       upcoming.length?`✅ ${upcoming.length} agendados`:'⬜ Sem calendário'
     ];
     ms.innerHTML=items.map(i=>`<span style="opacity:.7">${i}</span>`).join('');
   }
+
+  // ── MATRIZ COMPLETA — contexto rico e estruturado para o agente
+  const matrix=S.diag?.matrix||null;
+
   return{
     empresa:{
-      nome:S.formData.companyName||'não informado',
-      segmento:S.formData.segment||'não informado',
-      cidade:S.formData.city||'não informada',
-      tempo_mercado:S.formData.marketTime||'não informado',
-      como_vende:S.formData.salesModel||'não informado',
-      dificuldade_principal:S.formData.mainDifficulty||'não informada',
-      objetivo:S.formData.mainGoal||'não informado',
-      presenca_digital:S.formData.digitalPresence||'não informada'
+      nome:S.formData.companyName||matrix?.empresa?.nome||'não informado',
+      segmento:S.formData.segment||matrix?.empresa?.segmento||'não informado',
+      cidade:S.formData.city||matrix?.empresa?.cidade||'não informada',
+      tempo_mercado:S.formData.marketTime||matrix?.empresa?.tempo_mercado||'não informado',
+      modelo_venda:S.formData.salesModel||matrix?.empresa?.modelo_venda||'não informado',
+      canal_principal_leads:S.formData.leadSource||matrix?.empresa?.canal_principal||'não informado',
+      dor_central:S.formData.mainDifficulty||matrix?.empresa?.dor_central||'não informada',
+      objetivo:S.formData.mainGoal||matrix?.empresa?.objetivo_principal||'não informado',
+      presenca_digital:S.formData.digitalPresence||matrix?.empresa?.presenca_digital||'não informada',
+      avanco_desejado:S.formData.desiredAdvance||matrix?.empresa?.avanco_desejado||'não informado',
+      diferencial:S.formData.mainDiff||matrix?.empresa?.diferencial||'não informado'
     },
     diagnostico:S.diag?{
       score:S.diag.sc,
-      visao_geral:S.diag.overview,
+      nivel:matrix?.maturidade?.nivel||'Em construção',
+      resumo:S.diag.summary,
       gargalos:S.diag.gaps,
       prioridades:S.diag.priorities,
-      direcionamento:S.diag.direction,
       proximo_passo:S.diag.nextMove,
-      resumo:S.diag.summary
+      // Dados da matriz comercial
+      depende_indicacao:matrix?.comercial?.depende_indicacao||false,
+      presenca_fraca:matrix?.comercial?.presenca_fraca||false,
+      processo_definido:matrix?.comercial?.processo_definido||false,
+      // Cliente ideal inferido
+      cliente_ideal:matrix?.cliente_ideal||null
     }:null,
     vendas:S.salesProfile?{
       resumo:S.salesProfile.summary,
       principais_travas:S.salesProfile.weaknesses,
       acoes_recomendadas:S.salesProfile.actions,
-      respostas:S.salesProfile.answers
+      // Respostas reais do diagnóstico de vendas
+      como_responde_interesse:S.salesProfile.answers?.[1]||'',
+      perde_leads_no_caminho:S.salesProfile.answers?.[2]||'',
+      registra_leads:S.salesProfile.answers?.[3]||'',
+      faz_followup:S.salesProfile.answers?.[4]||'',
+      principal_objecao:S.salesProfile.answers?.[5]||'',
+      dificuldade_vender:S.salesProfile.answers?.[9]||''
     }:null,
     financeiro:{
       total_receitas:rec,
       total_despesas:dep,
       saldo_atual:rec-dep,
-      qtd_lancamentos:txns.length,
-      categorias_despesa:[...new Set(txns.filter(t=>t.tipo==='despesa').map(t=>t.cat).filter(Boolean))]
+      qtd_lancamentos:txns.length
     },
     marketing:{
-      meta_semana:S.mktGoals?.week||null,
-      meta_mes:S.mktGoals?.month||null,
       conteudos_agendados:upcoming.length,
-      proximos_agendamentos:upcoming.slice(0,5),
-      clientes:S.contacts.filter(c=>c.tipo==='cliente').length,
-      fornecedores:S.contacts.filter(c=>c.tipo==='fornecedor').length,
-      produtos:S.products.length
+      proximos:upcoming.slice(0,3),
+      clientes:S.contacts.filter(ct=>ct.tipo==='cliente').length,
+      produtos:S.products.length,
+      leads_crm:(S.salesLeads||[]).length,
+      leads_fechados:(S.salesLeads||[]).filter(l=>l.stage==='fechado').length
     }
   };
 }
