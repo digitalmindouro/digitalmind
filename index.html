@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v25</title>
+<title>DigitalMind v26</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -602,10 +602,57 @@ h1 em{font-style:normal;color:var(--primary);}
 .sgi-bar-fill{height:100%;background:linear-gradient(90deg,var(--c-vnd),#86efac);border-radius:999px;transition:width .4s ease;}
 .sgi-actions{display:flex;gap:7px;}
 
+
+/* ══ CALENDAR POPUP MODAL ══ */
+.cal-popup-modal{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:9999;width:min(680px,96vw);max-height:92vh;overflow-y:auto;
+  background:linear-gradient(180deg,rgba(8,18,42,.99),rgba(4,12,30,.98));
+  border:1px solid rgba(168,85,247,.25);border-radius:24px;
+  box-shadow:0 30px 80px rgba(0,0,0,.7);animation:fadeUp .2s ease both;
+}
+.cal-popup-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 24px 16px;border-bottom:1px solid var(--border);
+}
+.cal-popup-header h3{font-size:.95rem;font-weight:700;}
+.cal-popup-close{
+  width:32px;height:32px;border-radius:50%;border:1px solid var(--border);
+  background:rgba(255,255,255,.06);color:var(--muted);font-size:.9rem;
+  cursor:pointer;display:grid;place-items:center;transition:var(--tr);
+  font-family:inherit;
+}
+.cal-popup-close:hover{background:rgba(255,255,255,.12);color:var(--text);}
+.cal-popup-body{padding:20px 24px 24px;}
+
 </style>
 </head>
 <body>
 <div id="toastRoot"></div>
+
+<!-- Calendar Popup for scheduling -->
+<div class="cal-event-overlay hidden" id="calPopupOverlay" onclick="closeCalendarPopup()"></div>
+<div class="cal-popup-modal hidden" id="calPopupModal">
+  <div class="cal-popup-header">
+    <h3>📅 Escolha o dia do conteúdo</h3>
+    <button class="cal-popup-close" onclick="closeCalendarPopup()">✕</button>
+  </div>
+  <div class="cal-popup-body">
+    <div class="cal-header" style="margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm" onclick="navCalPopup(-1)">←</button>
+      <h3 id="calPopupTitle" style="min-width:160px;text-align:center;font-size:.95rem;font-weight:700"></h3>
+      <button class="btn btn-ghost btn-sm" onclick="navCalPopup(1)">→</button>
+      <div class="cal-legend" style="margin-left:auto">
+        <div class="cal-leg"><div class="cal-leg-dot reel"></div>Reel</div>
+        <div class="cal-leg"><div class="cal-leg-dot post"></div>Post</div>
+      </div>
+    </div>
+    <div class="cal-grid-wrap">
+      <div class="cal-weekdays"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div>
+      <div class="cal-grid" id="calPopupGrid"></div>
+    </div>
+  </div>
+</div>
 
 <!-- Calendar Event Card Modal -->
 <div class="cal-event-overlay hidden" id="calOverlay" onclick="closeCalEvent()"></div>
@@ -775,7 +822,7 @@ h1 em{font-style:normal;color:var(--primary);}
           <h2>Entre ou crie sua conta para continuar</h2>
           <p>A empresa entra em uma camada organizada. Diagnóstico, vendas, marketing e financeiro se conectam.</p>
           <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-diag)"></div><span class="auth-feat-text">Diagnóstico estratégico salvo</span></div>
-          <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-mkt)"></div><span class="auth-feat-text">Agente de Marketing contextualizado</span></div>
+          <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-mkt)"></div><span class="auth-feat-text">DM I.A Marketing contextualizado</span></div>
           <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-vnd)"></div><span class="auth-feat-text">Diagnóstico passo a passo de Vendas</span></div>
           <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-fin)"></div><span class="auth-feat-text">Financeiro com dashboard e gráficos</span></div>
           <div class="auth-feat"><div class="auth-feat-dot" style="background:var(--c-evo)"></div><span class="auth-feat-text">Score de maturidade e evolução</span></div>
@@ -862,7 +909,7 @@ h1 em{font-style:normal;color:var(--primary);}
           <p>Agente com IA, calendário de conteúdo, metas e produção — conectados ao diagnóstico da empresa.</p>
         </div>
         <div class="mkt-tabs">
-          <button class="mkt-tab active" data-mtab="agente">🤖 Agente IA</button>
+          <button class="mkt-tab active" data-mtab="agente">🤖 DM I.A</button>
           <button class="mkt-tab" data-mtab="metas">📊 Relatório</button>
           <button class="mkt-tab" data-mtab="calendario">📅 Calendário</button>
           <button class="mkt-tab" data-mtab="producao">🎬 Produção</button>
@@ -890,15 +937,12 @@ h1 em{font-style:normal;color:var(--primary);}
               </div>
             </div>
             <div class="cal-side-panel" style="position:sticky;top:80px">
-              <h3>✨ Agendar da conversa</h3>
-              <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;line-height:1.6">O agente lê toda a conversa e agenda todos os conteúdos discutidos com datas distribuídas a partir de hoje.</p>
-              <div style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.15);border-radius:14px;padding:14px;margin-bottom:16px;">
-                <p style="font-size:.76rem;font-weight:700;color:var(--muted);margin-bottom:8px">📌 Como funciona</p>
-                <p style="font-size:.76rem;color:var(--muted);line-height:1.7">1. Converse com o agente e peça ideias de conteúdo<br>2. Clique em <strong style="color:#d8b4fe">Agendar conversa</strong><br>3. O agente identifica todos os conteúdos e agenda no calendário automaticamente</p>
-              </div>
-              <div id="spStatusMsg" style="font-size:.8rem;color:var(--success);margin-bottom:12px;min-height:18px;text-align:center"></div>
-              <button class="btn btn-primary" style="width:100%;margin-bottom:10px;padding:13px" onclick="scheduleConversation()">✨ Agendar conversa no calendário</button>
-              <button class="btn btn-ghost btn-sm" style="width:100%" onclick="openCalEvent(new Date().toISOString().split('T')[0],null)">+ Adicionar manualmente</button>
+              <h3>📅 Agendar conteúdo</h3>
+              <p style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">Copie o conteúdo gerado pelo DM I.A, clique no botão e escolha a data no calendário.</p>
+              <button class="btn btn-primary" style="width:100%;padding:14px;font-size:.9rem;font-weight:700;letter-spacing:.01em" onclick="openCalendarPopup()">
+                📅 Agendar conteúdo
+              </button>
+              <p style="font-size:.75rem;color:var(--muted);margin-top:12px;text-align:center;line-height:1.5">Clique em um dia no calendário<br>para preencher as informações</p>
             </div>
           </div>
         </div>
@@ -1264,7 +1308,7 @@ const S = {
   _lastAgentAcoes: null
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v25';
+const SKEY = 'dm_v26';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -2207,15 +2251,7 @@ function addMsg(box,text,role='ai'){
       .trim();
     if(!clean) clean=text.replace(/[\{\}]/g,'').trim().slice(0,500);
     d.innerHTML=renderMarkdown(clean);
-    // Add "Agendar este" button if message has content/roteiro
-    if(box.id==='mktChat'&&(clean.includes('Reel')||clean.includes('roteiro')||clean.includes('Roteiro')||clean.includes('Formato:')||clean.includes('Gancho:'))){
-      const btn=document.createElement('button');
-      btn.className='btn btn-ghost btn-sm';
-      btn.style.cssText='margin-top:9px;font-size:.78rem;padding:6px 13px;border-color:rgba(168,85,247,.3);color:#d8b4fe;display:block;';
-      btn.innerHTML='📅 Agendar este conteúdo';
-      btn.onclick=(()=>{const t=clean;return()=>openAgendarFromChat(t);})();
-      d.appendChild(btn);
-    }
+    // Scheduling via side panel button
   } else {
     d.textContent=text;
   }
@@ -2706,6 +2742,10 @@ function renderCalendar(){
 
 /* ── Event Card Modal ── */
 function openCalEvent(ds, eventId){
+  // Move modals to body to avoid parent transform/overflow issues
+  const overlay=$('calOverlay'); const card=$('calEventCard');
+  if(overlay&&overlay.parentElement!==document.body) document.body.appendChild(overlay);
+  if(card&&card.parentElement!==document.body) document.body.appendChild(card);
   S.calSelectedDate=ds;
   S.calEditingId=eventId||null;
   const dt=new Date(ds+'T00:00:00');
@@ -3376,6 +3416,81 @@ function prefillPanelFromAgent(){
   document.querySelector('.cal-side-panel')?.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
+
+/* ═══════════════ CALENDAR POPUP ═══════════════ */
+let popupYear=new Date().getFullYear(), popupMonth=new Date().getMonth();
+
+function openCalendarPopup(){
+  popupYear=S.calYear; popupMonth=S.calMonth;
+  // Ensure modals at body level
+  ['calPopupOverlay','calPopupModal'].forEach(id=>{
+    const el=$(id); if(el&&el.parentElement!==document.body) document.body.appendChild(el);
+  });
+  renderCalendarPopup();
+  $('calPopupOverlay').classList.remove('hidden');
+  $('calPopupModal').classList.remove('hidden');
+}
+
+function closeCalendarPopup(){
+  $('calPopupOverlay').classList.add('hidden');
+  $('calPopupModal').classList.add('hidden');
+}
+
+function navCalPopup(dir){
+  popupMonth+=dir;
+  if(popupMonth>11){popupMonth=0;popupYear++;}
+  if(popupMonth<0){popupMonth=11;popupYear--;}
+  renderCalendarPopup();
+}
+
+function renderCalendarPopup(){
+  const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  $('calPopupTitle').textContent=`${MONTHS[popupMonth]} ${popupYear}`;
+  const firstDay=new Date(popupYear,popupMonth,1).getDay();
+  const daysInMonth=new Date(popupYear,popupMonth+1,0).getDate();
+  const daysInPrev=new Date(popupYear,popupMonth,0).getDate();
+  const today=new Date();
+  let html='';
+  for(let i=firstDay-1;i>=0;i--){
+    html+=`<div class="cal-day other-month"><div class="cal-day-num">${daysInPrev-i}</div></div>`;
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${popupYear}-${String(popupMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=today.getFullYear()===popupYear&&today.getMonth()===popupMonth&&today.getDate()===d;
+    const events=S.contentCalendar[ds]||[];
+    const dots=events.slice(0,4).map(e=>`<div class="cal-dot ${e.formato||'post'}"></div>`).join('');
+    html+=`<div class="cal-day${isToday?' today':''}" onclick="pickDayForSchedule('${ds}',${d})">
+      <div class="cal-day-num">${d}</div>
+      <div class="cal-dots">${dots}</div>
+    </div>`;
+  }
+  const total=firstDay+daysInMonth; const rem=total%7===0?0:7-(total%7);
+  for(let d=1;d<=rem;d++){html+=`<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;}
+  $('calPopupGrid').innerHTML=html;
+}
+
+function pickDayForSchedule(ds, dayNum){
+  closeCalendarPopup();
+  // Ensure main event card modals are at body level
+  ['calOverlay','calEventCard'].forEach(id=>{
+    const el=$(id); if(el&&el.parentElement!==document.body) document.body.appendChild(el);
+  });
+  // Open the event card for this day
+  S.calSelectedDate=ds; S.calEditingId=null;
+  $('calEventCardTitle').textContent=`Novo conteúdo — dia ${dayNum}`;
+  $('cevData').value=ds;
+  $('cevTitulo').value='';
+  $('cevDescricao').value='';
+  $('cevHora').value='09:00';
+  $('cevStatus').value='agendado';
+  S.calEventFmt='reel'; S.calEventPlat='instagram';
+  updateFmtBtns(); updatePlatBtns();
+  $('cevDeleteBtn').style.display='none';
+  $('calOverlay').classList.remove('hidden');
+  $('calEventCard').classList.remove('hidden');
+  setTimeout(()=>$('cevTitulo').focus(),80);
+}
+
 /* ═══════════════ INIT ═══════════════ */
 load();
 // Verificar sessão ativa no Supabase e restaurar login automaticamente
@@ -3419,7 +3534,7 @@ document.querySelectorAll('.mkt-tab').forEach(btn=>{
   btn.addEventListener('click',()=>switchMktTab(btn.dataset.mtab));
 });
 // Marketing agent initial greeting
-addMsg($('mktChat'),'Olá! Sou o DigitalMind Marketing com IA. Posso orientar estratégia, sugerir conteúdo com base no seu diagnóstico e responder sobre posicionamento. Em que posso ajudar?','ai');
+addMsg($('mktChat'),'Olá! Sou o DM I.A Marketing. Posso orientar estratégia, sugerir conteúdo com base no seu diagnóstico e responder sobre posicionamento. Em que posso ajudar?','ai');
 initEvoPeriods();
 renderCalendar();
 renderProd();
@@ -3431,6 +3546,13 @@ if(S.diag){ renderResultado(); renderDashboard(); renderActionTrail(); }
 // renderGoals removed from init — metas simplified to calendar-based reporting
 refreshCatLists();
 testSupa();
+// Move all modals to body on init to prevent positioning issues
+setTimeout(()=>{
+  ['calOverlay','calEventCard','calPopupOverlay','calPopupModal'].forEach(id=>{
+    const el=$(id);
+    if(el&&el.parentElement!==document.body) document.body.appendChild(el);
+  });
+},0);
 
 
 </script>
