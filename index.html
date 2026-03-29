@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v22</title>
+<title>DigitalMind v23</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -861,14 +861,14 @@ h1 em{font-style:normal;color:var(--primary);}
         </div>
         <div class="mkt-tabs">
           <button class="mkt-tab active" data-mtab="agente">🤖 Agente IA</button>
-          <button class="mkt-tab" data-mtab="metas">🎯 Metas</button>
+          <button class="mkt-tab" data-mtab="metas">📊 Relatório</button>
           <button class="mkt-tab" data-mtab="calendario">📅 Calendário</button>
           <button class="mkt-tab" data-mtab="producao">🎬 Produção</button>
         </div>
 
         <!-- AGENTE -->
         <div class="mkt-panel active" id="mktpanel-agente">
-          <div class="chat-layout">
+          <div style="display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start">
             <div class="card">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                 <h3>Converse com o agente</h3>
@@ -880,71 +880,19 @@ h1 em{font-style:normal;color:var(--primary);}
                 <input id="mktInput" type="text" placeholder="Pergunte sobre marketing, conteúdo ou estratégia..."/>
                 <button class="btn btn-primary btn-sm" id="mktSend">Enviar</button>
               </div>
-            </div>
-            <div class="card">
-              <h3 style="margin-bottom:11px">Sugestões rápidas</h3>
-              <div class="chat-prompts">
-                <button class="prompt-btn mkt-prompt">Qual conteúdo devo criar essa semana?</button>
-                <button class="prompt-btn mkt-prompt">Como melhorar meu posicionamento?</button>
-                <button class="prompt-btn mkt-prompt">Quais são minhas prioridades de marketing?</button>
-                <button class="prompt-btn mkt-prompt">Como atrair mais clientes pelo Instagram?</button>
-                <button class="prompt-btn mkt-prompt">O que meu diagnóstico diz sobre marketing?</button>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+                <button class="prompt-btn mkt-prompt" style="width:auto;padding:7px 11px;font-size:.76rem">Qual conteúdo criar essa semana?</button>
+                <button class="prompt-btn mkt-prompt" style="width:auto;padding:7px 11px;font-size:.76rem">Como melhorar posicionamento?</button>
+                <button class="prompt-btn mkt-prompt" style="width:auto;padding:7px 11px;font-size:.76rem">Minhas prioridades de marketing?</button>
+                <button class="prompt-btn mkt-prompt" style="width:auto;padding:7px 11px;font-size:.76rem">Como atrair mais clientes?</button>
               </div>
-              <div class="status-row" style="margin-top:13px"><span>🧠</span>Contexto: diagnóstico + vendas + financeiro + calendário.</div>
             </div>
-          </div>
-        </div>
-
-        <!-- METAS — progresso de conteúdo do calendário -->
-        <div class="mkt-panel" id="mktpanel-metas">
-          <div class="info-card" style="margin-bottom:16px">
-            <h3>Progresso de conteúdo</h3>
-            <p style="font-size:.84rem;color:var(--muted);margin-bottom:14px">Baseado nos conteúdos agendados e publicados no calendário.</p>
-            <div class="mkt-progress-cards" id="mktProgressCards"></div>
-          </div>
-          <div class="info-card">
-            <h3>Publicações do mês</h3>
-            <div id="mktPubList"><div class="empty-state" style="padding:12px"><p>Nenhum conteúdo publicado ainda.</p></div></div>
-          </div>
-        </div>
-
-        <!-- CALENDÁRIO -->
-        <div class="mkt-panel" id="mktpanel-calendario">
-          <div class="cal-layout">
-            <!-- Calendar main -->
-            <div>
-              <div class="cal-header">
-                <button class="btn btn-ghost btn-sm" onclick="navCal(-1)">←</button>
-                <h3 id="calTitle">Março 2026</h3>
-                <button class="btn btn-ghost btn-sm" onclick="navCal(1)">→</button>
-                <div class="cal-legend">
-                  <div class="cal-leg"><div class="cal-leg-dot post"></div>Post</div>
-                  <div class="cal-leg"><div class="cal-leg-dot reel"></div>Reel</div>
-                  <div class="cal-leg"><div class="cal-leg-dot story"></div>Story</div>
-                  <div class="cal-leg"><div class="cal-leg-dot carrossel"></div>Carrossel</div>
-                </div>
-              </div>
-              <div class="cal-grid-wrap">
-                <div class="cal-weekdays"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div>
-                <div class="cal-grid" id="calGrid"></div>
-              </div>
-              <div class="cal-upcoming" id="calUpcoming"></div>
-            </div>
-            <!-- Side panel: schedule via agent -->
-            <div class="cal-side-panel">
+            <div class="cal-side-panel" style="position:sticky;top:80px">
               <h3>📅 Agendar conteúdo</h3>
-              <div class="cal-side-field">
-                <label>Data</label>
-                <input type="date" id="spData"/>
-              </div>
-              <div class="cal-side-field">
-                <label>Hora</label>
-                <input type="time" id="spHora" value="09:00"/>
-              </div>
-              <div class="cal-side-field">
-                <label>Tema / assunto</label>
-                <input type="text" id="spTema" placeholder="Ex.: Como atrair clientes..."/>
-              </div>
+              <p style="font-size:.76rem;color:var(--muted);margin-bottom:13px">Preencha e clique em agendar — o agente registra no calendário usando o contexto da conversa.</p>
+              <div class="cal-side-field"><label>Data</label><input type="date" id="spData"/></div>
+              <div class="cal-side-field"><label>Hora</label><input type="time" id="spHora" value="09:00"/></div>
+              <div class="cal-side-field"><label>Tema / assunto</label><input type="text" id="spTema" placeholder="Ex.: Como atrair clientes..."/></div>
               <div class="cal-side-field">
                 <label>Formato</label>
                 <div class="cal-chip-row" id="spFmtRow">
@@ -964,14 +912,43 @@ h1 em{font-style:normal;color:var(--primary);}
                 </div>
               </div>
               <div class="cal-side-sep"></div>
-              <button class="btn btn-primary" style="width:100%" onclick="scheduleViaAgent()">
-                ✨ Agendar com DM IA
-              </button>
-              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="scheduleManual()">
-                + Adicionar manualmente
-              </button>
+              <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="scheduleViaAgent()">✨ Agendar com DM IA</button>
+              <button class="btn btn-ghost btn-sm" style="width:100%" onclick="scheduleManual()">+ Adicionar manualmente</button>
             </div>
           </div>
+        </div>
+
+        <!-- METAS — progresso de conteúdo do calendário -->
+        <div class="mkt-panel" id="mktpanel-metas">
+          <div class="info-card" style="margin-bottom:16px">
+            <h3>Progresso de conteúdo</h3>
+            <p style="font-size:.84rem;color:var(--muted);margin-bottom:14px">Baseado nos conteúdos agendados e publicados no calendário.</p>
+            <div class="mkt-progress-cards" id="mktProgressCards"></div>
+          </div>
+          <div class="info-card">
+            <h3>Publicações do mês</h3>
+            <div id="mktPubList"><div class="empty-state" style="padding:12px"><p>Nenhum conteúdo publicado ainda.</p></div></div>
+          </div>
+        </div>
+
+        <!-- CALENDÁRIO -->
+        <div class="mkt-panel" id="mktpanel-calendario">
+          <div class="cal-header">
+                <button class="btn btn-ghost btn-sm" onclick="navCal(-1)">←</button>
+                <h3 id="calTitle">Março 2026</h3>
+                <button class="btn btn-ghost btn-sm" onclick="navCal(1)">→</button>
+                <div class="cal-legend">
+                  <div class="cal-leg"><div class="cal-leg-dot post"></div>Post</div>
+                  <div class="cal-leg"><div class="cal-leg-dot reel"></div>Reel</div>
+                  <div class="cal-leg"><div class="cal-leg-dot story"></div>Story</div>
+                  <div class="cal-leg"><div class="cal-leg-dot carrossel"></div>Carrossel</div>
+                </div>
+              </div>
+              <div class="cal-grid-wrap">
+                <div class="cal-weekdays"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div>
+                <div class="cal-grid" id="calGrid"></div>
+              </div>
+              <div class="cal-upcoming" id="calUpcoming"></div>
         </div>
 
         <!-- PRODUÇÃO -->
@@ -1300,7 +1277,7 @@ const S = {
   salesGoals: []  // [{id, tipo, target, done, label}]
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v22';
+const SKEY = 'dm_v23';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
