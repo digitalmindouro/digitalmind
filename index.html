@@ -505,12 +505,13 @@ h1 em{font-style:normal;color:var(--primary);}
 
 
 /* ══ CALENDAR EVENT CARD ══ */
-.cal-event-card{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:600;
-  width:min(520px,94vw);max-height:90vh;overflow-y:auto;
+.cal-event-card{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;
+  width:min(520px,94vw);max-height:88vh;overflow-y:auto;
   background:linear-gradient(180deg,rgba(10,22,48,.99),rgba(6,16,38,.97));
-  border:1px solid rgba(168,85,247,.3);border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.5);
-  animation:slideUp .22s ease both;}
-.cal-event-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:599;animation:fadeIn .2s ease both;}
+  border:1px solid rgba(168,85,247,.3);border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.7);
+  animation:fadeUp .2s ease both;}
+.cal-event-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9998;}
+/* cal-event-overlay defined in new CSS block */
 .cal-event-card h3{font-size:1rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
 .cal-event-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
 .cal-event-field{display:flex;flex-direction:column;gap:5px;}
@@ -889,32 +890,15 @@ h1 em{font-style:normal;color:var(--primary);}
               </div>
             </div>
             <div class="cal-side-panel" style="position:sticky;top:80px">
-              <h3>📅 Agendar conteúdo</h3>
-              <p style="font-size:.76rem;color:var(--muted);margin-bottom:13px">Preencha e clique em agendar — o agente registra no calendário usando o contexto da conversa.</p>
-              <div class="cal-side-field"><label>Data</label><input type="date" id="spData"/></div>
-              <div class="cal-side-field"><label>Hora</label><input type="time" id="spHora" value="09:00"/></div>
-              <div class="cal-side-field"><label>Tema / assunto</label><input type="text" id="spTema" placeholder="Ex.: Como atrair clientes..."/></div>
-              <div class="cal-side-field">
-                <label>Formato</label>
-                <div class="cal-chip-row" id="spFmtRow">
-                  <button class="cal-chip reel sel" data-fmt="reel" onclick="spSelFmt(this)">🎬 Reel</button>
-                  <button class="cal-chip post" data-fmt="post" onclick="spSelFmt(this)">📷 Post</button>
-                  <button class="cal-chip story" data-fmt="story" onclick="spSelFmt(this)">⚡ Story</button>
-                  <button class="cal-chip carrossel" data-fmt="carrossel" onclick="spSelFmt(this)">📑 Carrossel</button>
-                </div>
+              <h3>✨ Agendar da conversa</h3>
+              <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;line-height:1.6">O agente lê toda a conversa e agenda todos os conteúdos discutidos com datas distribuídas a partir de hoje.</p>
+              <div style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.15);border-radius:14px;padding:14px;margin-bottom:16px;">
+                <p style="font-size:.76rem;font-weight:700;color:var(--muted);margin-bottom:8px">📌 Como funciona</p>
+                <p style="font-size:.76rem;color:var(--muted);line-height:1.7">1. Converse com o agente e peça ideias de conteúdo<br>2. Clique em <strong style="color:#d8b4fe">Agendar conversa</strong><br>3. O agente identifica todos os conteúdos e agenda no calendário automaticamente</p>
               </div>
-              <div class="cal-side-field">
-                <label>Plataforma</label>
-                <div class="cal-chip-row" id="spPlatRow">
-                  <button class="cal-chip sel" data-plat="instagram" onclick="spSelPlat(this)">📸 Instagram</button>
-                  <button class="cal-chip" data-plat="tiktok" onclick="spSelPlat(this)">🎵 TikTok</button>
-                  <button class="cal-chip" data-plat="facebook" onclick="spSelPlat(this)">👥 Facebook</button>
-                  <button class="cal-chip" data-plat="whatsapp" onclick="spSelPlat(this)">💬 WhatsApp</button>
-                </div>
-              </div>
-              <div class="cal-side-sep"></div>
-              <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="scheduleViaAgent()">✨ Agendar com DM IA</button>
-              <button class="btn btn-ghost btn-sm" style="width:100%" onclick="scheduleManual()">+ Adicionar manualmente</button>
+              <div id="spStatusMsg" style="font-size:.8rem;color:var(--success);margin-bottom:12px;min-height:18px;text-align:center"></div>
+              <button class="btn btn-primary" style="width:100%;margin-bottom:10px;padding:13px" onclick="scheduleConversation()">✨ Agendar conversa no calendário</button>
+              <button class="btn btn-ghost btn-sm" style="width:100%" onclick="openCalEvent(new Date().toISOString().split('T')[0],null)">+ Adicionar manualmente</button>
             </div>
           </div>
         </div>
@@ -3065,6 +3049,77 @@ function spSelPlat(btn){
     b.className='cal-chip';
     if(b.dataset.plat===spPlat) b.classList.add('sel');
   });
+}
+
+async function scheduleConversation(){
+  const statusEl=$('spStatusMsg');
+  if(statusEl) statusEl.textContent='⟳ Lendo a conversa...';
+  
+  // Extract all messages from chat
+  const chatBox=$('mktChat');
+  if(!chatBox){if(statusEl)statusEl.textContent='';return;}
+  const msgs=Array.from(chatBox.querySelectorAll('.msg')).map(el=>({
+    role:el.classList.contains('user')?'user':'ai',
+    text:el.textContent||''
+  }));
+  if(msgs.length<2){
+    toast('Converse com o agente primeiro para ter conteúdos para agendar.','info');
+    if(statusEl) statusEl.textContent='';
+    return;
+  }
+  
+  const hoje=new Date().toISOString().split('T')[0];
+  const conversaTexto=msgs.map(m=>`${m.role==='user'?'Cliente':'Agente'}: ${m.text.slice(0,300)}`).join('\n');
+  
+  const prompt=`Com base na conversa abaixo, identifique TODOS os conteúdos (reels, posts, stories, carrosseis) que foram sugeridos e agende cada um em dias úteis a partir de hoje (${hoje}). Distribua um por dia.
+
+CONVERSA:
+${conversaTexto}
+
+Retorne SOMENTE o JSON com os conteúdos para agendar. Para cada conteúdo use o título e roteiro da conversa.`;
+
+  if(statusEl) statusEl.textContent='⟳ Agendando com DM IA...';
+  
+  const reply = await callAgentGemini(prompt);
+  
+  if(S._lastAgentAcoes?.calendario?.length){
+    const n=S._lastAgentAcoes.calendario.length;
+    renderCalendar(); renderMktProgressCards(); recalcMaturity();
+    if(statusEl) statusEl.textContent=`✅ ${n} conteúdo(s) agendado(s)!`;
+    toast(`${n} conteúdo(s) agendado(s) no calendário!`,'success','DM IA');
+    setTimeout(()=>switchMktTab('calendario'),1200);
+  } else {
+    // Fallback: manually parse chat and create events
+    const reelMatches=[...chatBox.querySelectorAll('.msg.ai')].filter(el=>el.textContent.includes('Reel')||el.textContent.includes('Post')||el.textContent.includes('Formato:'));
+    if(reelMatches.length){
+      let dayOffset=1;
+      reelMatches.forEach(el=>{
+        const text=el.textContent;
+        const tituloMatch=text.match(/Reel \d+[^\n]*/)||text.match(/Post \d+[^\n]*/)||['Conteúdo'];
+        const d=new Date(); d.setDate(d.getDate()+dayOffset);
+        // Skip weekends
+        while(d.getDay()===0||d.getDay()===6){d.setDate(d.getDate()+1);}
+        const ds=d.toISOString().split('T')[0];
+        if(!S.contentCalendar[ds]) S.contentCalendar[ds]=[];
+        S.contentCalendar[ds].push({
+          id:uuid(),titulo:tituloMatch[0].trim().slice(0,60),
+          descricao:text.slice(0,200),hora:'09:00',
+          formato:'reel',type:'reel',
+          plataforma:'instagram',status:'agendado',
+          note:tituloMatch[0].trim().slice(0,60)
+        });
+        dayOffset++;
+      });
+      autoSaveCalendar(); renderCalendar(); renderMktProgressCards(); recalcMaturity();
+      if(statusEl) statusEl.textContent=`✅ ${reelMatches.length} conteúdo(s) agendado(s)!`;
+      toast(`${reelMatches.length} conteúdo(s) agendado(s)!`,'success','DM IA');
+      setTimeout(()=>switchMktTab('calendario'),1200);
+    } else {
+      if(statusEl) statusEl.textContent='';
+      toast('Não encontrei conteúdos na conversa. Peça ideias ao agente primeiro.','info');
+    }
+  }
+  S._lastAgentAcoes=null;
 }
 
 async function scheduleViaAgent(){
