@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v23</title>
+<title>DigitalMind v24</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1274,10 +1274,11 @@ const S = {
   calEditingId: null,
   calEventFmt: 'post',
   calEventPlat: 'instagram',
-  salesGoals: []  // [{id, tipo, target, done, label}]
+  salesGoals: [],
+  maturityRealScore: 0  // [{id, tipo, target, done, label}]
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v23';
+const SKEY = 'dm_v24';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -1300,7 +1301,7 @@ function save(){
     salesAnswers:S.salesAnswers, financial:S.financial,
     categories:S.categories, contacts:S.contacts, products:S.products,
     evoHistory:S.evoHistory, ci:S.ci, companyId:S.companyId,
-    mktGoals:S.mktGoals, contentCalendar:S.contentCalendar, salesGoals:S.salesGoals
+    mktGoals:S.mktGoals, contentCalendar:S.contentCalendar, salesGoals:S.salesGoals, maturityRealScore:S.maturityRealScore||0
   }));}catch(e){}
 }
 function load(){
@@ -1320,6 +1321,7 @@ function load(){
     if(d.ci)        S.ci=d.ci;
     if(d.companyId) S.companyId=d.companyId;
     if(d.mktGoals)  S.mktGoals=d.mktGoals||{week:null,month:null};
+    if(d.maturityRealScore) S.maturityRealScore=d.maturityRealScore||0;
     if(d.contentCalendar) S.contentCalendar=d.contentCalendar||{};
     if(d.salesGoals) S.salesGoals=d.salesGoals||[];
   }catch(e){}
@@ -1745,17 +1747,21 @@ function renderResultado(){
 
 /* ═══════════════ RENDER DASHBOARD ═══════════════ */
 function renderDashboard(){
+  // Calcula maturidade real separado do score do formulário
+  const realScore=calcMaturityScore();
+  S.maturityRealScore=realScore;
   const d=S.diag;
   $('dEmpty').classList.toggle('hidden',Boolean(d));
   if(!d){['mMaturidade','mPrioridades','mDiag','dScore'].forEach(id=>{const el=$(id);if(el)el.textContent='–';});return;}
-  $('mMaturidade').textContent=`${d.sc}%`;
+  // Dashboard mostra maturidade real (ações), não o score do formulário
+  $('mMaturidade').textContent=`${realScore}%`;
   $('mPrioridades').textContent=String(d.priorities.length);
   $('mDiag').textContent='Pronto';$('mDiagNote').textContent='Diagnóstico concluído';
-  $('mTrend').textContent=d.sc>=70?'▲ Boa base estrutural':'● Requer estruturação';
-  $('mTrend').className=`metric-trend ${d.sc>=70?'up':'neutral'}`;
+  $('mTrend').textContent=realScore>=70?'▲ Boa base estrutural':realScore>=50?'● Em construção':'● Requer estruturação';
+  $('mTrend').className=`metric-trend ${realScore>=70?'up':'neutral'}`;
   $('dOverview').textContent=d.overview;
   $('dSummary').textContent=d.summary;
-  $('dScore').textContent=`${d.sc}%`;
+  $('dScore').textContent=`${d.sc}%`; // score do formulário permanece no ring do diagnóstico
   $('dMatText').textContent=d.nextMove;
   $('scoreRing').style.setProperty('--score',d.sc);
   $('dPriorities').innerHTML=d.priorities.map(p=>`<span class="pill" onclick="togglePriority('${p}')">${p}</span>`).join('');
@@ -1793,7 +1799,23 @@ function openMetric(type){
   const d=S.diag;
   if(!d&&type!=='modulos'){toast('Complete o diagnóstico primeiro.','info');return;}
   const configs={
-    maturidade:{title:`Maturidade Digital — ${d.sc}%`,sub:'Índice calculado com base nas respostas do diagnóstico estratégico.',content:`<div style="text-align:center"><div class="score-ring" style="--score:${d.sc};margin:0 auto 14px"><span>${d.sc}%</span></div></div><p style="font-size:.9rem;color:var(--muted);line-height:1.65">${d.nextMove}</p><div class="sep"></div><h4 style="margin-bottom:10px;font-size:.9rem">Gargalos principais</h4><ul style="padding-left:14px">${d.gaps.map(g=>`<li style="font-size:.86rem;color:var(--muted);line-height:1.65;margin-bottom:5px">${g}</li>`).join('')}</ul>`},
+    maturidade:{title:'Maturidade Digital',sub:'Score real baseado nas ações completadas no sistema.',content:(()=>{
+      const realScore=S.maturityRealScore||calcMaturityScore();
+      const breakdown=getMaturityBreakdown();
+      return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+        <div style="text-align:center;padding:14px;border-radius:14px;background:rgba(75,140,255,.06);border:1px solid rgba(75,140,255,.12)">
+          <p style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase">Maturidade Real</p>
+          <div class="score-ring" style="--score:${realScore};width:90px;height:90px;margin:0 auto 6px"><span style="font-size:1.1rem">${realScore}%</span></div>
+          <p style="font-size:.74rem;color:var(--muted)">Baseado em ações reais</p>
+        </div>
+        <div style="text-align:center;padding:14px;border-radius:14px;background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.12)">
+          <p style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase">Score do Diagnóstico</p>
+          <div class="score-ring" style="--score:${S.diag?.sc||0};width:90px;height:90px;margin:0 auto 6px"><span style="font-size:1.1rem">${S.diag?.sc||0}%</span></div>
+          <p style="font-size:.74rem;color:var(--muted)">Baseado nas respostas</p>
+        </div>
+      </div>
+      <div class="maturity-breakdown">${breakdown.map(b=>`<div class="mat-item"><span class="mat-item-label">${b.label}</span><span class="mat-item-val ${b.earned>0?'earned':'zero'}">${b.earned>0?'+'+b.earned:'—'} / ${b.max}</span></div>`).join('')}</div>`;
+    })()},
     prioridades:{title:'Prioridades Identificadas',sub:'Clique em qualquer prioridade para ver recomendações detalhadas.',content:`<div style="display:flex;flex-direction:column;gap:10px">${d.priorities.map(p=>{const pd=PRIORITY_DATA[p]||{icon:'📌',desc:'',recs:[]};return`<div style="padding:14px;border-radius:14px;background:rgba(75,140,255,.06);border:1px solid rgba(75,140,255,.16)"><strong>${pd.icon} ${p}</strong><p style="font-size:.84rem;color:var(--muted);margin-top:6px;line-height:1.55">${pd.desc}</p></div>`;}).join('')}</div>`},
     modulos:{title:'Módulos Ativos',sub:'4 módulos disponíveis na Área da Empresa.',content:`<div style="display:flex;flex-direction:column;gap:9px">${[{icon:'🎯',n:'Marketing',d:'Agente com contexto real do diagnóstico.'},{icon:'🛒',n:'Vendas',d:'Diagnóstico passo a passo + agente comercial.'},{icon:'💰',n:'Financeiro',d:'Lançamentos, gráficos, clientes, produtos e conciliação.'},{icon:'📈',n:'Evolução',d:'Score, histórico por período e metas de avanço.'}].map(m=>`<div style="display:flex;gap:11px;padding:12px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid var(--border)"><span style="font-size:1.3rem">${m.icon}</span><div><strong>${m.n}</strong><p style="font-size:.82rem;color:var(--muted)">${m.d}</p></div></div>`).join('')}</div>`},
     diagnostico:{title:'Diagnóstico Estratégico',sub:'Leitura inicial completa da empresa.',content:`<p style="font-size:.9rem;color:var(--muted);line-height:1.65;margin-bottom:14px">${d.overview}</p><p style="font-size:.9rem;line-height:1.65">${d.direction}</p>`}
@@ -2178,7 +2200,14 @@ function addMsg(box,text,role='ai'){
   const d=document.createElement('div'); d.className=`msg ${role}`;
   if(role==='ai'){
     // Strip JSON action blocks from display
-    const clean=text.replace(/```json[\s\S]+?```/g,'').replace(/\{\s*"action":[\s\S]+?\}/g,'').trim();
+    // Strip any JSON blocks - code fences and raw JSON objects
+    let clean=text
+      .replace(/```json[\s\S]*?```/gi,'')
+      .replace(/```[\s\S]*?```/gi,'')
+      .replace(/^\s*\{[\s\S]*"resposta"[\s\S]*\}\s*$/,'') // strip full JSON response
+      .replace(/\{\s*"action":[\s\S]+?\}/g,'')
+      .trim();
+    if(!clean) clean=text.replace(/[\{\}]/g,'').trim().slice(0,500); // last resort
     d.innerHTML=renderMarkdown(clean);
   } else {
     d.textContent=text;
@@ -2513,11 +2542,15 @@ function buildAgentContext(){
 }
 async function callAgentGemini(prompt){
   try{
+    const controller=new AbortController();
+    const timeoutId=setTimeout(()=>controller.abort(),25000); // 25s timeout
     const res=await fetch(`${SUPABASE_URL}/functions/v1/agente-cliente`,{
+      signal:controller.signal,
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY},
       body:JSON.stringify({prompt,context:buildAgentContext()})
     });
+    clearTimeout(timeoutId);
     if(!res.ok){console.error('Edge fn error:',res.status);return null;}
     const data=await res.json();
     // Handle structured response with acoes
@@ -2912,15 +2945,17 @@ function calcMaturityScore(){
 
 function recalcMaturity(){
   const score=calcMaturityScore();
-  // Update diag score
-  if(S.diag) S.diag.sc=score;
-  // Update all score displays
-  [$('topScore'),$('dashScore'),$('evoScore'),$('evolutionScore')].forEach(el=>{if(el) el.textContent=`${score}%`;});
-  [$('scoreRing'),$('evoRing'),$('evolutionRing')].forEach(el=>{if(el) el.style.setProperty('--score',score);});
+  // Store separately — never overwrite S.diag.sc (formulário score)
+  S.maturityRealScore=score;
+  // Update maturity displays only (not the diag ring which shows formulário score)
+  if($('topScore')) $('topScore').textContent=`${score}%`;
   if($('mTrend')){
     $('mTrend').textContent=score>=70?'▲ Boa base estrutural':score>=50?'● Em construção':'● Requer estruturação';
     $('mTrend').className=`metric-trend ${score>=70?'up':'neutral'}`;
   }
+  // Evo ring shows real maturity
+  [$('evoRing'),$('evolutionRing')].forEach(el=>{if(el) el.style.setProperty('--score',score);});
+  [$('evoScore'),$('evolutionScore')].forEach(el=>{if(el) el.textContent=`${score}%`;});
   // Push to evo history
   pushEvoHistory(score);
   save();
@@ -3040,27 +3075,24 @@ async function scheduleViaAgent(){
   if(!data){toast('Selecione uma data.','error');return;}
   const dt=new Date(data+'T00:00:00');
   const dateLabel=`${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`;
-  const prompt=`Crie um conteúdo para agendar no calendário com os seguintes dados exatos:
-- Data: ${dateLabel} (formato YYYY-MM-DD: ${data})
+  const prompt=`Crie um conteúdo para agendar no calendário. Dados obrigatórios:
+- Data: ${data} (YYYY-MM-DD)
 - Hora: ${hora}
 - Formato: ${spFmt}
 - Plataforma: ${spPlat}
-${tema?`- Tema sugerido: ${tema}`:'- Sugira um tema relevante baseado no diagnóstico da empresa'}
-
-Responda com:
-1. Um parágrafo com o roteiro/ideia do conteúdo
-2. O bloco JSON para registrar no calendário`;
-  // Switch to agente tab and send
+${tema?`- Tema: ${tema}`:'- Sugira um tema relevante para a empresa'}
+Retorne a resposta com o campo acoes.calendario preenchido.`;
   switchMktTab('agente');
   setTimeout(async()=>{
-    addMsg($('mktChat'),`Agendar ${spFmt} no Instagram para ${dateLabel} às ${hora}${tema?' — '+tema:''}`, 'user');
+    const userMsg=`Agendar ${spFmt} no ${spPlat} para ${dateLabel} às ${hora}${tema?' — '+tema:''}`;
+    addMsg($('mktChat'),userMsg,'user');
     const dot=document.createElement('div'); dot.className='msg ai';
     dot.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
     $('mktChat').appendChild(dot); $('mktChat').scrollTop=$('mktChat').scrollHeight;
-    const reply=await mktReply(prompt);
-    dot.remove(); addMsg($('mktChat'),reply||'Não consegui processar.','ai');
-    if(reply) detectAndExecuteActions(reply);
-    // Clear fields
+    // Call Gemini directly to avoid double action execution
+    const reply=await callAgentGemini(prompt); // acoes already executed inside callAgentGemini
+    dot.remove();
+    addMsg($('mktChat'),reply||'Conteúdo agendado! Veja no Calendário.','ai');
     $('spData').value=''; $('spTema').value='';
   },100);
 }
