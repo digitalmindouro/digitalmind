@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v27</title>
+<title>DigitalMind v28</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1138,17 +1138,16 @@ h1 em{font-style:normal;color:var(--primary);}
           </div>
         </div>
 
-        <!-- DONE STATE -->
+        <!-- DONE STATE — just the refazer button, cards moved to popup -->
         <div id="salesDoneWrap" class="hidden">
           <div class="status-row" style="margin-bottom:14px">
             <span id="vBadge" class="sb-badge">Salvo</span>
             <button class="btn btn-ghost btn-sm" id="sRedoBtn">↺ Refazer diagnóstico</button>
           </div>
-          <div class="info-grid" style="margin-bottom:18px">
-            <div class="info-card"><h3>Diagnóstico comercial</h3><p id="sSummary" class="muted" style="font-size:.86rem;line-height:1.65"></p></div>
-            <div class="info-card"><h3>Principais travas</h3><ul id="sWeaknesses" style="font-size:.86rem;color:var(--muted);padding-left:14px;line-height:1.8"></ul></div>
-            <div class="info-card"><h3>Ações recomendadas</h3><ul id="sActions" style="font-size:.86rem;color:var(--muted);padding-left:14px;line-height:1.8"></ul></div>
-          </div>
+          <!-- Hidden elements to keep JS working -->
+          <p id="sSummary" style="display:none"></p>
+          <ul id="sWeaknesses" style="display:none"></ul>
+          <ul id="sActions" style="display:none"></ul>
         </div>
 
         <!-- CRM KANBAN -->
@@ -1188,16 +1187,14 @@ h1 em{font-style:normal;color:var(--primary);}
                 <button class="btn btn-success btn-sm" id="salesSend">Enviar</button>
               </div>
             </div>
-            <div class="card">
-              <h3 style="margin-bottom:11px">Sugestões rápidas</h3>
-              <div class="chat-prompts">
-                <button class="prompt-btn sales-prompt">Como vender mais com o que já tenho?</button>
-                <button class="prompt-btn sales-prompt">Qual é meu maior gargalo comercial?</button>
-                <button class="prompt-btn sales-prompt">Como organizar meu follow-up?</button>
-                <button class="prompt-btn sales-prompt">Me dê um script de primeiro contato</button>
-                <button class="prompt-btn sales-prompt">Como responder objeção de preço?</button>
+            <div class="card" style="background:rgba(34,197,94,.03);border-color:rgba(34,197,94,.12)">
+              <p style="font-size:.82rem;color:var(--muted);line-height:1.7;margin-bottom:12px">🧠 O agente lê o seu diagnóstico comercial e responde com orientações específicas para o processo de vendas da sua empresa.</p>
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <button class="prompt-btn sales-prompt" style="text-align:left;padding:10px 13px;font-size:.82rem">Me dê 3 ações de vendas para essa semana</button>
+                <button class="prompt-btn sales-prompt" style="text-align:left;padding:10px 13px;font-size:.82rem">Como prospectar pelo WhatsApp?</button>
+                <button class="prompt-btn sales-prompt" style="text-align:left;padding:10px 13px;font-size:.82rem">Me dê um script de primeiro contato</button>
+                <button class="prompt-btn sales-prompt" style="text-align:left;padding:10px 13px;font-size:.82rem">Como responder objeção de preço?</button>
               </div>
-              <div class="status-row" style="margin-top:13px"><span>🧠</span>Contexto: diagnóstico + perfil comercial.</div>
             </div>
           </div>
         </div>
@@ -1206,17 +1203,13 @@ h1 em{font-style:normal;color:var(--primary);}
         <div class="sales-goals-section" id="salesGoalsSection">
           <h3>🎯 Metas Comerciais</h3>
           <p style="font-size:.84rem;color:var(--muted);margin-bottom:16px;">Defina metas de resultado para acompanhar sua evolução comercial.</p>
-          <div class="sales-goal-form cf">
-            <div class="sgf-field">
-              <label>Meta</label>
-              <input type="text" id="sgLabel" placeholder="Ex.: Vendas concluídas, Leads abordados..."/>
-            </div>
-            <div class="sgf-field">
-              <label>Objetivo</label>
-              <input type="number" id="sgTarget" placeholder="Qtd." min="1"/>
-            </div>
-            <button class="btn btn-success btn-sm" onclick="addSalesGoal()" style="align-self:end">+ Adicionar</button>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+            <input type="text" id="sgLabel" placeholder="Ex.: Prospectar 5 clientes essa semana."
+              style="flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.86rem;font-family:inherit;outline:none;"
+              onkeydown="if(event.key==='Enter') addSalesGoal()"/>
+            <button class="btn btn-success btn-sm" onclick="addSalesGoal()">+ Adicionar</button>
           </div>
+          <input type="hidden" id="sgTarget" value="1"/>
           <div id="salesGoalsList"></div>
         </div>
       </div>
@@ -1471,7 +1464,7 @@ const S = {
   _lastAgentAcoes: null
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v27';
+const SKEY = 'dm_v28';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -4221,11 +4214,11 @@ function openVdDiagModal(){
   $('mmTitle').textContent='Diagnóstico de Vendas';
   $('mmSub').textContent='Resultado completo do diagnóstico comercial.';
   $('mmContent').innerHTML=`
-    <div class="info-grid">
-      <div class="info-card"><h3>Resumo</h3><p style="font-size:.86rem;color:var(--muted);line-height:1.65">${sp.summary}</p></div>
-      <div class="info-card"><h3>Principais travas</h3><ul style="padding-left:14px;font-size:.86rem;color:var(--muted);line-height:1.8">${(sp.weaknesses||[]).map(w=>`<li>${w}</li>`).join('')}</ul></div>
-      <div class="info-card full"><h3>Ações recomendadas</h3><ul style="padding-left:14px;font-size:.86rem;color:var(--muted);line-height:1.8">${(sp.actions||[]).map(a=>`<li>${a}</li>`).join('')}</ul></div>
-    </div>`;
+    <p style="font-size:.88rem;color:var(--muted);line-height:1.7;margin-bottom:16px">${sp.summary}</p>
+    <h4 style="font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">Principais travas</h4>
+    <ul style="padding-left:16px;display:flex;flex-direction:column;gap:8px">
+      ${(sp.weaknesses||[]).map(w=>`<li style="font-size:.88rem;color:var(--text);line-height:1.6">${w}</li>`).join('')}
+    </ul>`;
   openModal('metricModal');
 }
 
