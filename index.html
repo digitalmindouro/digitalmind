@@ -1582,25 +1582,33 @@ async function hydrateFromSupabase(){
       }));
     }
 
-    // Contacts
-    const {data:cts}=await supa.from('contacts').select('*').eq('company_id',company.id);
-    if(cts?.length&&!S.contacts.length) S.contacts=cts.map(c=>({id:c.id,nome:c.nome,contato:c.contato||'',tipo:c.tipo}));
+    // Contacts (tabela pode não existir ainda — falha silenciosa)
+    try{
+      const {data:cts}=await supa.from('contacts').select('*').eq('company_id',company.id);
+      if(cts?.length&&!S.contacts.length) S.contacts=cts.map(c=>({id:c.id,nome:c.nome,contato:c.contato||'',tipo:c.tipo}));
+    }catch(e){console.warn('contacts table not ready');}
 
     // Products
-    const {data:prods}=await supa.from('products').select('*').eq('company_id',company.id);
-    if(prods?.length&&!S.products.length) S.products=prods.map(p=>({id:p.id,nome:p.nome,preco:parseFloat(p.preco)||0,cat:p.categoria||''}));
+    try{
+      const {data:prods}=await supa.from('products').select('*').eq('company_id',company.id);
+      if(prods?.length&&!S.products.length) S.products=prods.map(p=>({id:p.id,nome:p.nome,preco:parseFloat(p.preco)||0,cat:p.categoria||''}));
+    }catch(e){console.warn('products table not ready');}
 
     // Categories
-    const {data:cats}=await supa.from('financial_categories').select('*').eq('company_id',company.id);
-    if(cats?.length){
-      cats.filter(c=>c.tipo==='receita').forEach(c=>{ if(!S.categories.receita.includes(c.nome)) S.categories.receita.push(c.nome); });
-      cats.filter(c=>c.tipo==='despesa').forEach(c=>{ if(!S.categories.despesa.includes(c.nome)) S.categories.despesa.push(c.nome); });
-    }
+    try{
+      const {data:cats}=await supa.from('financial_categories').select('*').eq('company_id',company.id);
+      if(cats?.length){
+        cats.filter(c=>c.tipo==='receita').forEach(c=>{ if(!S.categories.receita.includes(c.nome)) S.categories.receita.push(c.nome); });
+        cats.filter(c=>c.tipo==='despesa').forEach(c=>{ if(!S.categories.despesa.includes(c.nome)) S.categories.despesa.push(c.nome); });
+      }
+    }catch(e){console.warn('financial_categories table not ready');}
 
     // Evo history
-    const {data:evo}=await supa.from('company_evo_history').select('*')
-      .eq('company_id',company.id).order('year').order('month');
-    if(evo?.length) S.evoHistory=evo.map(e=>({month:e.month,year:e.year,score:e.score,label:e.label}));
+    try{
+      const {data:evo}=await supa.from('company_evo_history').select('*')
+        .eq('company_id',company.id).order('year').order('month');
+      if(evo?.length) S.evoHistory=evo.map(e=>({month:e.month,year:e.year,score:e.score,label:e.label}));
+    }catch(e){console.warn('company_evo_history table not ready');}
 
     save();
     await loadCalendarFromSupabase();
@@ -1758,7 +1766,7 @@ function renderDashboard(){
   if(!d){['mMaturidade','mPrioridades','mDiag','dScore'].forEach(id=>{const el=$(id);if(el)el.textContent='–';});return;}
   // Score único — maturidade real baseada em ações
   $('mMaturidade').textContent=`${realScore}%`;
-  $('dashScore').textContent=`${realScore}%`;
+  $('dScore').textContent=`${realScore}%`;
   $('mPrioridades').textContent=String(d.priorities.length);
   $('mDiag').textContent='Pronto';$('mDiagNote').textContent='Diagnóstico concluído';
   $('mTrend').textContent=realScore>=70?'▲ Boa base estrutural':realScore>=50?'● Em construção':'● Requer estruturação';
