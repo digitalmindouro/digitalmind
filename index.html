@@ -2742,10 +2742,9 @@ function renderCalendar(){
 
 /* ── Event Card Modal ── */
 function openCalEvent(ds, eventId){
-  // Move modals to body to avoid parent transform/overflow issues
+  // ALWAYS move to body first — overflow:auto on ancestors breaks fixed positioning
   const overlay=$('calOverlay'); const card=$('calEventCard');
-  if(overlay&&overlay.parentElement!==document.body) document.body.appendChild(overlay);
-  if(card&&card.parentElement!==document.body) document.body.appendChild(card);
+  document.body.appendChild(overlay); document.body.appendChild(card);
   S.calSelectedDate=ds;
   S.calEditingId=eventId||null;
   const dt=new Date(ds+'T00:00:00');
@@ -3119,9 +3118,11 @@ function openAgendarFromChat(text){
   S.calEventFmt=fmt; S.calEventPlat='instagram';
   updateFmtBtns(); updatePlatBtns();
   $('cevDeleteBtn').style.display='none';
+  document.body.appendChild($('calOverlay'));
+  document.body.appendChild($('calEventCard'));
   $('calOverlay').classList.remove('hidden');
   $('calEventCard').classList.remove('hidden');
-  setTimeout(()=>$('cevData').focus(),80);
+  setTimeout(()=>$('cevTitulo').focus(),80);
 }
 
 async function scheduleConversation(){
@@ -3422,10 +3423,10 @@ let popupYear=new Date().getFullYear(), popupMonth=new Date().getMonth();
 
 function openCalendarPopup(){
   popupYear=S.calYear; popupMonth=S.calMonth;
-  // Ensure modals at body level
-  ['calPopupOverlay','calPopupModal'].forEach(id=>{
-    const el=$(id); if(el&&el.parentElement!==document.body) document.body.appendChild(el);
-  });
+  // ALWAYS move to body — overflow:auto on ancestors breaks fixed positioning
+  const po=$('calPopupOverlay'); const pm=$('calPopupModal');
+  if(po) document.body.appendChild(po);
+  if(pm) document.body.appendChild(pm);
   renderCalendarPopup();
   $('calPopupOverlay').classList.remove('hidden');
   $('calPopupModal').classList.remove('hidden');
@@ -3471,10 +3472,10 @@ function renderCalendarPopup(){
 
 function pickDayForSchedule(ds, dayNum){
   closeCalendarPopup();
-  // Ensure main event card modals are at body level
-  ['calOverlay','calEventCard'].forEach(id=>{
-    const el=$(id); if(el&&el.parentElement!==document.body) document.body.appendChild(el);
-  });
+  // ALWAYS move to body
+  const _ov=$('calOverlay'); const _cd=$('calEventCard');
+  if(_ov) document.body.appendChild(_ov);
+  if(_cd) document.body.appendChild(_cd);
   // Open the event card for this day
   S.calSelectedDate=ds; S.calEditingId=null;
   $('calEventCardTitle').textContent=`Novo conteúdo — dia ${dayNum}`;
@@ -3547,12 +3548,10 @@ if(S.diag){ renderResultado(); renderDashboard(); renderActionTrail(); }
 refreshCatLists();
 testSupa();
 // Move all modals to body on init to prevent positioning issues
-setTimeout(()=>{
-  ['calOverlay','calEventCard','calPopupOverlay','calPopupModal'].forEach(id=>{
-    const el=$(id);
-    if(el&&el.parentElement!==document.body) document.body.appendChild(el);
-  });
-},0);
+// Move all modals to body immediately
+['calOverlay','calEventCard','calPopupOverlay','calPopupModal'].forEach(id=>{
+  const el=$(id); if(el) document.body.appendChild(el);
+});
 
 
 </script>
