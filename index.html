@@ -2573,21 +2573,26 @@ async function callAgentGemini(prompt){
 
 /* ═══════════════ METAS ═══════════════ */
 function setGoal(type){
-  const target=parseInt($(type==='week'?'weekGoalTarget':'monthGoalTarget').value);
-  const label=$(type==='week'?'weekGoalLabel':'monthGoalLabel').value.trim();
+  const tEl=$(type==='week'?'weekGoalTarget':'monthGoalTarget');
+  const lEl=$(type==='week'?'weekGoalLabel':'monthGoalLabel');
+  if(!tEl||!lEl) return; // elements removed from simplified Metas panel
+  const target=parseInt(tEl.value);
+  const label=lEl.value.trim();
   if(!target||target<=0){toast('Informe um número válido.','error');return;}
+  if(!S.mktGoals) S.mktGoals={};
   S.mktGoals[type]={target,label:label||`${target} conteúdos`,done:0};
   save(); renderGoals(); toast(`Meta ${type==='week'?'semanal':'mensal'} definida!`,'success');
 }
 function markGoalDone(type){
   if(!S.mktGoals?.[type]) return;
   S.mktGoals[type].done=Math.min(S.mktGoals[type].done+1,S.mktGoals[type].target);
-  save(); renderGoals();
+  save(); renderMktMetasPanel();
 }
 function resetGoal(type){
-  if(S.mktGoals?.[type]){delete S.mktGoals[type];save();renderGoals();}
+  if(S.mktGoals?.[type]){delete S.mktGoals[type];save();renderMktMetasPanel();}
 }
 function renderGoals(){
+  // renderGoals is legacy — now handled by renderMktMetasPanel for simplified UI
   ['week','month'].forEach(type=>{
     const el=$(type==='week'?'weekGoalDisplay':'monthGoalDisplay'); if(!el) return;
     const goal=S.mktGoals?.[type];
@@ -2893,39 +2898,7 @@ function renderActionTrail(){
 
 
 /* ═══════════════ MATURIDADE REAL ═══════════════ */
-function calcMaturityScore(){
-  let score=0;
-  const txns=S.financial.transactions;
-  // Diagnóstico estratégico
-  if(S.diag) score+=20;
-  // Diagnóstico de vendas
-  if(S.salesProfile) score+=15;
-  // Financeiro
-  if(txns.length>=1) score+=10;
-  if(txns.length>=5) score+=5;
-  // Cliente cadastrado
-  if(S.contacts.filter(c=>c.tipo==='cliente').length>=1) score+=5;
-  // Produto cadastrado
-  if(S.products.length>=1) score+=5;
-  // Calendário
-  const now=new Date();
-  const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const agendados=Object.entries(S.contentCalendar)
-    .filter(([d])=>d.startsWith(thisMonth))
-    .reduce((a,[,v])=>a+v.length,0);
-  if(agendados>=3) score+=10;
-  // Conteúdos publicados
-  const publicados=Object.values(S.contentCalendar)
-    .flat().filter(e=>e.status==='publicado').length;
-  score+=Math.min(publicados*2,10);
-  // Meta definida
-  if(S.mktGoals?.week) score+=5;
-  if(S.mktGoals?.month) score+=5;
-  // Meta concluída
-  if(S.mktGoals?.week&&S.mktGoals.week.done>=S.mktGoals.week.target) score+=5;
-  if(S.mktGoals?.month&&S.mktGoals.month.done>=S.mktGoals.month.target) score+=10;
-  return Math.min(100,score);
-}
+/* calcMaturityScore — defined below */
 
 function recalcMaturity(){
   const score=calcMaturityScore();
@@ -3325,7 +3298,7 @@ renderSalesGoals();
 const todayISO=new Date().toISOString().split('T')[0];
 if($('spData')) $('spData').value=todayISO;
 if(S.diag){ renderResultado(); renderDashboard(); renderActionTrail(); }
-if(S.mktGoals?.week||S.mktGoals?.month) renderGoals();
+// renderGoals removed from init — metas simplified to calendar-based reporting
 refreshCatLists();
 testSupa();
 
