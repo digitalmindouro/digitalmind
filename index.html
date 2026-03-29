@@ -2266,8 +2266,38 @@ async function mktReply(p){
   const temVendas=Boolean(S.salesProfile);
 
   // Respostas contextuais por tema
-  if(pl.includes('conteúdo')||pl.includes('conteudo')||pl.includes('post')||pl.includes('reel')||pl.includes('vídeo')||pl.includes('video'))
-    return`Para ${empresa} no segmento de ${seg}, o conteúdo que mais converte agora é aquele que responde diretamente à dor do seu cliente ideal — não conteúdo genérico. Com base no diagnóstico, seu foco deve ser reforçar ${d.priorities[0].toLowerCase()} na comunicação. ${agendados>0?`Você já tem ${agendados} publicação(ões) agendada(s) esse mês no calendário — bom ritmo.`:'Acesse a aba Calendário e comece a agendar sua grade de conteúdo.'} Um roteiro de 30 segundos eficiente: abertura com a dor do cliente (3s), solução que você oferece (15s), prova ou resultado (8s), chamada para ação clara (4s).`;
+  const numMatch=pl.match(/(\d+)\s*(ideia|idea|reel|post|conteúdo|conteudo|roteiro)/i);
+  const numRequested=numMatch?parseInt(numMatch[1]):3;
+
+  if(pl.includes('reel')||pl.includes('reels')||(pl.includes('conteúdo')||pl.includes('conteudo'))&&(pl.includes('ideia')||pl.includes('roteiro')||pl.includes('criar')||pl.includes('crie')||pl.includes('semana'))){
+    // Gera roteiros reais baseados nas prioridades do diagnóstico
+    const prio1=d.priorities[0]||'Direção estratégica';
+    const prio2=d.priorities[1]||'Posicionamento';
+    const prio3=d.priorities[2]||'Clareza de oferta';
+    const gargalo=d.gaps[0]||'falta de direção clara';
+    const reels=[
+      {
+        titulo:`Reel 1 — ${prio1}`,
+        gancho:`"Sua empresa está trabalhando muito, mas crescendo pouco?"`,
+        roteiro:`**[0-3s]** Aparece na câmera e pergunta: "Você investe em marketing, faz posts, mas o resultado não vem?"\n**[3-10s]** "O problema não é esforço — é direção. ${empresa} entende isso."\n**[10-20s]** "Antes de qualquer ação, você precisa saber: onde quer estar em 12 meses, quem é seu cliente ideal e qual a sua proposta real de valor."\n**[20-28s]** "Sem isso, todo esforço vira improviso."\n**[28-30s]** CTA: "Comente DIAGNÓSTICO e te mando um material gratuito."`,
+        formato:'Reel',plataforma:'Instagram'
+      },
+      {
+        titulo:`Reel 2 — ${prio2}`,
+        gancho:`"Por que clientes escolhem o concorrente mesmo sendo mais caro?"`,
+        roteiro:`**[0-3s]** "Sabe por que você perde clientes para alguém que cobra mais?"\n**[3-10s]** "Posicionamento. Enquanto você fala de preço, o concorrente fala de valor."\n**[10-20s]** "Posicionamento é responder em 10 segundos: o que você resolve, para quem, e por que você — não o vizinho."\n**[20-28s]** "Quando isso fica claro, o cliente para de pechinchar."\n**[28-30s]** CTA: "Salva esse vídeo e responde: qual é a maior dor do seu cliente?"`,
+        formato:'Reel',plataforma:'Instagram'
+      },
+      {
+        titulo:`Reel 3 — ${prio3}`,
+        gancho:`"O erro que faz você perder vendas todo dia sem perceber"`,
+        roteiro:`**[0-3s]** "Você está perdendo vendas por um motivo simples — sua oferta não está clara."\n**[3-10s]** "Se o cliente precisa perguntar 'mas o que exatamente você faz?', você já perdeu."\n**[10-20s]** "Clareza de oferta é: o cliente entende o que compra, o resultado que vai ter e por que agora."\n**[20-28s]** "Quando a oferta fica clara, a venda fica mais fácil."\n**[28-30s]** CTA: "Comenta: sua oferta está clara hoje?"`,
+        formato:'Reel',plataforma:'Instagram'
+      }
+    ];
+    const lista=reels.slice(0,Math.min(numRequested,3));
+    return lista.map(r=>`## ${r.titulo}\n**Gancho:** ${r.gancho}\n\n**Roteiro:**\n${r.roteiro}\n\n**Formato:** ${r.formato} | **Plataforma:** ${r.plataforma}`).join('\n\n---\n\n');
+  }
 
   if(pl.includes('posicion')||pl.includes('diferenci'))
     return`O posicionamento de ${empresa} precisa responder três perguntas de forma clara e memorável: o que você resolve, para quem especificamente, e por que você e não o concorrente. O diagnóstico identificou que ${d.gaps[0]?.toLowerCase()||'a clareza estratégica'} é o principal gargalo. Antes de investir em tráfego ou conteúdo, defina uma proposta de valor que qualquer pessoa entenda em menos de 10 segundos.`;
@@ -2576,7 +2606,11 @@ async function callAgentGemini(prompt){
       S._lastAgentAcoes=data.acoes;
     }
     return data?.response||null;
-  }catch(e){console.error('Gemini agent:',e);return null;}
+  }catch(e){
+    if(e.name==='AbortError') console.error('Gemini timeout');
+    else console.error('Gemini:',e.message||e);
+    return null;
+  }
 }
 
 /* ═══════════════ METAS ═══════════════ */
