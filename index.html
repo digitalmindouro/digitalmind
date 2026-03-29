@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v29</title>
+<title>DigitalMind v30</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1168,14 +1168,14 @@ h1 em{font-style:normal;color:var(--primary);}
 
         <div class="sep"></div>
 
-        <!-- DM IA VENDAS CHAT -->
+        <!-- DM IA VENDAS + METAS LADO A LADO -->
         <div id="salesDoneWrap2" style="display:none">
           <div class="mod-header">
             <div class="mod-tag vnd">DM I.A Vendas</div>
             <h2>Seu agente comercial</h2>
             <p>Orientação estratégica com base no seu processo de vendas. Pergunte sobre prospecção, abordagem, follow-up, objeções e fechamento.</p>
           </div>
-          <div class="chat-layout">
+          <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
             <div class="card">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
                 <h3>Converse com DM Vendas</h3>
@@ -1188,24 +1188,21 @@ h1 em{font-style:normal;color:var(--primary);}
                 <button class="btn btn-success btn-sm" id="salesSend">Enviar</button>
               </div>
             </div>
-
+            <div class="card" id="salesGoalsSection" style="position:sticky;top:80px">
+              <h3 style="margin-bottom:6px">🎯 Metas Comerciais</h3>
+              <p style="font-size:.78rem;color:var(--muted);margin-bottom:12px;line-height:1.55">Defina metas para acompanhar sua evolução comercial.</p>
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+                <input type="text" id="sgLabel" placeholder="Ex.: Prospectar 5 clientes essa semana."
+                  style="flex:1;padding:9px 11px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.8rem;font-family:inherit;outline:none;min-width:0;"
+                  onkeydown="if(event.key==='Enter') addSalesGoal()"/>
+                <button class="btn btn-success btn-sm" style="white-space:nowrap;padding:9px 12px" onclick="addSalesGoal()">+ Add</button>
+              </div>
+              <input type="hidden" id="sgTarget" value="1"/>
+              <div id="salesGoalsList"></div>
+            </div>
           </div>
         </div>
 
-        <!-- METAS COMERCIAIS -->
-        <div class="sales-goals-section" id="salesGoalsSection">
-          <h3>🎯 Metas Comerciais</h3>
-          <p style="font-size:.84rem;color:var(--muted);margin-bottom:16px;">Defina metas de resultado para acompanhar sua evolução comercial.</p>
-          <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
-            <input type="text" id="sgLabel" placeholder="Ex.: Prospectar 5 clientes essa semana."
-              style="flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);font-size:.86rem;font-family:inherit;outline:none;"
-              onkeydown="if(event.key==='Enter') addSalesGoal()"/>
-            <button class="btn btn-success btn-sm" onclick="addSalesGoal()">+ Adicionar</button>
-          </div>
-          <input type="hidden" id="sgTarget" value="1"/>
-          <div id="salesGoalsList"></div>
-        </div>
-      </div>
 
 <div class="module" id="module-financeiro">
         <div class="mod-header">
@@ -1457,7 +1454,7 @@ const S = {
   _lastAgentAcoes: null
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v29';
+const SKEY = 'dm_v30';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
