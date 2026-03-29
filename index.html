@@ -874,7 +874,7 @@ h1 em{font-style:normal;color:var(--primary);}
             <div class="card">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                 <h3>Converse com o agente</h3>
-                <span class="ai-badge" id="mktAiBadge">● DM IA</span>
+                <span class="ai-badge live" id="mktAiBadge">● DM IA</span>
               </div>
               <div id="matrixStatus" style="font-size:.74rem;color:var(--muted);margin-bottom:11px;display:flex;gap:10px;flex-wrap:wrap;"></div>
               <div class="chat-box" id="mktChat"></div>
@@ -2199,20 +2199,28 @@ function renderActiveModule(){
 function addMsg(box,text,role='ai'){
   const d=document.createElement('div'); d.className=`msg ${role}`;
   if(role==='ai'){
-    // Strip JSON action blocks from display
-    // Strip any JSON blocks - code fences and raw JSON objects
     let clean=text
       .replace(/```json[\s\S]*?```/gi,'')
       .replace(/```[\s\S]*?```/gi,'')
-      .replace(/^\s*\{[\s\S]*"resposta"[\s\S]*\}\s*$/,'') // strip full JSON response
+      .replace(/^\s*\{[\s\S]*"resposta"[\s\S]*\}\s*$/,'')
       .replace(/\{\s*"action":[\s\S]+?\}/g,'')
       .trim();
-    if(!clean) clean=text.replace(/[\{\}]/g,'').trim().slice(0,500); // last resort
+    if(!clean) clean=text.replace(/[\{\}]/g,'').trim().slice(0,500);
     d.innerHTML=renderMarkdown(clean);
+    // Add "Agendar este" button if message has content/roteiro
+    if(box.id==='mktChat'&&(clean.includes('Reel')||clean.includes('roteiro')||clean.includes('Roteiro')||clean.includes('Formato:')||clean.includes('Gancho:'))){
+      const btn=document.createElement('button');
+      btn.className='btn btn-ghost btn-sm';
+      btn.style.cssText='margin-top:9px;font-size:.78rem;padding:6px 13px;border-color:rgba(168,85,247,.3);color:#d8b4fe;display:block;';
+      btn.innerHTML='📅 Agendar este conteúdo';
+      btn.onclick=(()=>{const t=clean;return()=>openAgendarFromChat(t);})();
+      d.appendChild(btn);
+    }
   } else {
     d.textContent=text;
   }
   box.appendChild(d); box.scrollTop=box.scrollHeight;
+}
 }
 function typing(box,text){
   const d=document.createElement('div');d.className='msg ai';d.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
@@ -2223,13 +2231,13 @@ async function mktReply(p){
   // Try Gemini first
   if(supa&&S.user){
     const badge=$('mktAiBadge');
-    if(badge) badge.textContent='⟳ Consultando DM IA...';
+    if(badge) badge.textContent='⟳ DM IA...';
     const resp=await callAgentGemini(p);
     if(resp){
       if(badge){badge.textContent='● DM IA';badge.className='ai-badge live';}
       return resp;
     }
-    if(badge){badge.textContent='● DM IA Local';badge.className='ai-badge';}
+    if(badge){badge.textContent='● DM IA';badge.className='ai-badge';}
   }
   // Fallback local inteligente usando todos os dados disponíveis
   const d=S.diag;
@@ -3049,6 +3057,32 @@ function spSelPlat(btn){
     b.className='cal-chip';
     if(b.dataset.plat===spPlat) b.classList.add('sel');
   });
+}
+
+function openAgendarFromChat(text){
+  // Extract title from content block
+  const tituloMatch=text.match(/^##\s*(.+)$/m)||text.match(/Reel \d+[^\n]*/m)||text.match(/Post \d+[^\n]*/m);
+  const titulo=tituloMatch?tituloMatch[1]||tituloMatch[0]:'Conteúdo do agente';
+  // Extract roteiro
+  const roteiroMatch=text.match(/\*\*Roteiro:\*\*([\s\S]*?)(?:\n\n|Formato:|$)/);
+  const roteiro=roteiroMatch?roteiroMatch[1].trim().replace(/\n\*\*/g,'\n').slice(0,600):'';
+  // Detect formato
+  const fmt=text.toLowerCase().includes('reel')?'reel':text.toLowerCase().includes('carrossel')?'carrossel':text.toLowerCase().includes('story')?'story':'post';
+  // Open calendar event card with pre-filled data
+  const hoje=new Date().toISOString().split('T')[0];
+  S.calSelectedDate=hoje; S.calEditingId=null;
+  $('calEventCardTitle').textContent='Agendar conteúdo';
+  $('cevData').value=hoje;
+  $('cevTitulo').value=titulo.trim().slice(0,80);
+  $('cevDescricao').value=roteiro;
+  $('cevHora').value='09:00';
+  $('cevStatus').value='agendado';
+  S.calEventFmt=fmt; S.calEventPlat='instagram';
+  updateFmtBtns(); updatePlatBtns();
+  $('cevDeleteBtn').style.display='none';
+  $('calOverlay').classList.remove('hidden');
+  $('calEventCard').classList.remove('hidden');
+  setTimeout(()=>$('cevData').focus(),80);
 }
 
 async function scheduleConversation(){
