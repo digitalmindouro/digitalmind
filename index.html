@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v24</title>
+<title>DigitalMind v25</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -506,7 +506,8 @@ h1 em{font-style:normal;color:var(--primary);}
 
 /* ══ CALENDAR EVENT CARD ══ */
 .cal-event-card{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:600;
-  width:min(520px,94vw);background:linear-gradient(180deg,rgba(10,22,48,.99),rgba(6,16,38,.97));
+  width:min(520px,94vw);max-height:90vh;overflow-y:auto;
+  background:linear-gradient(180deg,rgba(10,22,48,.99),rgba(6,16,38,.97));
   border:1px solid rgba(168,85,247,.3);border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.5);
   animation:slideUp .22s ease both;}
 .cal-event-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:599;animation:fadeIn .2s ease both;}
@@ -1275,10 +1276,11 @@ const S = {
   calEventFmt: 'post',
   calEventPlat: 'instagram',
   salesGoals: [],
-  maturityRealScore: 0  // [{id, tipo, target, done, label}]
+  maturityRealScore: 0,
+  _lastAgentAcoes: null
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v24';
+const SKEY = 'dm_v25';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -1601,6 +1603,7 @@ async function hydrateFromSupabase(){
     if(evo?.length) S.evoHistory=evo.map(e=>({month:e.month,year:e.year,score:e.score,label:e.label}));
 
     save();
+    await loadCalendarFromSupabase();
     toast('Dados carregados do Supabase.','success');
   }catch(e){ console.error('hydrateFromSupabase:',e); }
 }
@@ -1753,15 +1756,17 @@ function renderDashboard(){
   const d=S.diag;
   $('dEmpty').classList.toggle('hidden',Boolean(d));
   if(!d){['mMaturidade','mPrioridades','mDiag','dScore'].forEach(id=>{const el=$(id);if(el)el.textContent='–';});return;}
-  // Dashboard mostra maturidade real (ações), não o score do formulário
+  // Score único — maturidade real baseada em ações
   $('mMaturidade').textContent=`${realScore}%`;
+  $('dashScore').textContent=`${realScore}%`;
   $('mPrioridades').textContent=String(d.priorities.length);
   $('mDiag').textContent='Pronto';$('mDiagNote').textContent='Diagnóstico concluído';
   $('mTrend').textContent=realScore>=70?'▲ Boa base estrutural':realScore>=50?'● Em construção':'● Requer estruturação';
   $('mTrend').className=`metric-trend ${realScore>=70?'up':'neutral'}`;
   $('dOverview').textContent=d.overview;
   $('dSummary').textContent=d.summary;
-  $('dScore').textContent=`${d.sc}%`; // score do formulário permanece no ring do diagnóstico
+  // dScore shows real maturity (same as dashboard card)
+  if($('dScore')) $('dScore').textContent=`${realScore}%`;
   $('dMatText').textContent=d.nextMove;
   $('scoreRing').style.setProperty('--score',d.sc);
   $('dPriorities').innerHTML=d.priorities.map(p=>`<span class="pill" onclick="togglePriority('${p}')">${p}</span>`).join('');
@@ -1770,7 +1775,7 @@ function renderDashboard(){
   $('evoScore').textContent=`${d.sc}%`;
   $('evoText').textContent=`Maturidade em ${d.sc}%. O avanço depende de clareza, processo e integração entre os módulos.`;
   // Push to evoHistory if not already there for current month
-  pushEvoHistory(d.sc);
+  pushEvoHistory(calcMaturityScore());
   renderEvo();
   renderSalesState();
   renderActionTrail();
@@ -2144,10 +2149,12 @@ function initEvoPeriods(){
   const sm=now.getMonth()-5; const sy2=sm<0?now.getFullYear()-1:now.getFullYear(); const sm2=sm<0?12+sm:sm;
   sy.value=`${sm2}_${sy2}`;
 }
-function pushEvoHistory(score){
+function pushEvoHistory(scoreArg){
+  const realScore=calcMaturityScore(); // always use real score
   const now=new Date(); const m=now.getMonth(); const y=now.getFullYear();
   const exists=S.evoHistory.find(h=>h.month===m&&h.year===y);
-  if(!exists){S.evoHistory.push({month:m,year:y,score,label:'Diagnóstico atualizado'});save();}
+  if(exists){exists.score=realScore;}
+  else{S.evoHistory.push({month:m,year:y,score:realScore,label:'Maturidade atualizada'});save();}
 }
 function renderEvo(){
   const sy=$('evoPeriodStart')?.value; const ey=$('evoPeriodEnd')?.value;
@@ -2167,9 +2174,10 @@ function renderEvo(){
     $('evoBars').innerHTML=''; $('evoScore').textContent='–'; return;
   }
   const last=filtered[filtered.length-1];
-  $('evoRing').style.setProperty('--score',last.score);
-  $('evoScore').textContent=`${last.score}%`;
-  $('evoText').textContent=`Maturidade em ${last.score}% no período selecionado.`;
+  const realNow=calcMaturityScore();
+  $('evoRing').style.setProperty('--score',realNow);
+  $('evoScore').textContent=`${realNow}%`;
+  $('evoText').textContent=`Maturidade atual: ${realNow}% (baseado nas ações reais da empresa).`;
   tw.innerHTML=`<table class="table-lite"><thead><tr><th>Mês</th><th>Score</th><th>Leitura</th></tr></thead><tbody>${filtered.map(h=>`<tr><td>${MONTHS[h.month]}/${h.year}</td><td><strong>${h.score}%</strong></td><td style="color:var(--muted)">${h.label}</td></tr>`).join('')}</tbody></table>`;
   const max=Math.max(...filtered.map(h=>h.score),100);
   $('evoBars').innerHTML=filtered.map(h=>`<div class="h-bar-w"><div class="h-bar-val">${h.score}%</div><div class="h-bar" style="height:${Math.round((h.score/max)*58)}px"></div><div class="h-bar-lbl">${MONTHS[h.month]}</div></div>`).join('');
@@ -2292,8 +2300,10 @@ async function sendChat(inputId,chatId,replyFn){
   dot.remove();
   const text=reply||'Desculpe, não consegui processar sua pergunta.';
   addMsg($(chatId),text,'ai');
-  // Detect and execute calendar/meta actions from agent response
-  if(reply) detectAndExecuteActions(reply);
+  // Show "use in panel" hint if agent detected schedulable content
+  if(S._lastAgentAcoes?.calendario?.length&&chatId==='mktChat'){
+    showScheduleSuggestion(S._lastAgentAcoes.calendario);
+  }
 }
 function setupChat(inputId,chatId,sendId,replyFn){
   $(sendId).addEventListener('click',()=>sendChat(inputId,chatId,replyFn));
@@ -2355,7 +2365,7 @@ $('nextBtn').addEventListener('click', async ()=>{
     }
   }
 
-  pushEvoHistory(S.diag.sc); save();
+  pushEvoHistory(calcMaturityScore()); save();
   renderResultado();
   btn.disabled=false; btn.textContent='Gerar leitura estratégica →';
   goToStep('resultado');
@@ -2553,35 +2563,9 @@ async function callAgentGemini(prompt){
     clearTimeout(timeoutId);
     if(!res.ok){console.error('Edge fn error:',res.status);return null;}
     const data=await res.json();
-    // Handle structured response with acoes
-    if(data?.acoes){
-      // Execute calendar actions directly
-      const ac=data.acoes;
-      if(ac.calendario&&Array.isArray(ac.calendario)&&ac.calendario.length){
-        let added=0;
-        ac.calendario.forEach(item=>{
-          if(!item.data) return;
-          const ev={id:uuid(),titulo:item.titulo||'Conteúdo',descricao:item.descricao||'',
-            hora:item.hora||'09:00',formato:(item.formato||'post').toLowerCase(),
-            type:(item.formato||'post').toLowerCase(),plataforma:(item.plataforma||'instagram').toLowerCase(),
-            status:'agendado',note:item.titulo||'Conteúdo'};
-          if(!S.contentCalendar[item.data]) S.contentCalendar[item.data]=[];
-          S.contentCalendar[item.data].push(ev); added++;
-        });
-        if(added){save();renderCalendar();renderMktProgressCards();recalcMaturity();
-          setTimeout(()=>toast(`${added} conteúdo(s) adicionado(s) ao calendário!`,'success','DM IA'),500);}
-      }
-      // Execute meta actions
-      if(ac.meta_semana?.quantidade>0&&!S.mktGoals?.week){
-        if(!S.mktGoals) S.mktGoals={};
-        S.mktGoals.week={target:ac.meta_semana.quantidade,label:ac.meta_semana.descricao||`${ac.meta_semana.quantidade} conteúdos/semana`,done:0};
-        save();
-      }
-      if(ac.meta_mes?.quantidade>0&&!S.mktGoals?.month){
-        if(!S.mktGoals) S.mktGoals={};
-        S.mktGoals.month={target:ac.meta_mes.quantidade,label:ac.meta_mes.descricao||`${ac.meta_mes.quantidade} conteúdos/mês`,done:0};
-        save();
-      }
+    // Store last acoes for user-triggered scheduling (never auto-execute)
+    if(data?.acoes?.calendario?.length){
+      S._lastAgentAcoes=data.acoes;
     }
     return data?.response||null;
   }catch(e){console.error('Gemini agent:',e);return null;}
@@ -2762,7 +2746,7 @@ function saveCalEvent(){
   // Se publicado, atualiza progresso das metas
   if(ev.status==='publicado') updateGoalProgress();
   renderMktMetasPanel();
-  save(); renderCalendar(); renderMktProgressCards(); recalcMaturity();
+  autoSaveCalendar(); renderCalendar(); renderMktProgressCards(); recalcMaturity();
   closeCalEvent();
   toast(`"${titulo}" salvo no calendário!`,'success');
 }
@@ -2771,7 +2755,7 @@ function deleteCalEvent(){
   if(!S.calSelectedDate||!S.calEditingId) return;
   S.contentCalendar[S.calSelectedDate]=(S.contentCalendar[S.calSelectedDate]||[]).filter(e=>e.id!==S.calEditingId);
   if(!S.contentCalendar[S.calSelectedDate].length) delete S.contentCalendar[S.calSelectedDate];
-  save(); renderCalendar(); renderMktProgressCards(); recalcMaturity();
+  autoSaveCalendar(); renderCalendar(); renderMktProgressCards(); recalcMaturity();
   closeCalEvent();
   toast('Conteúdo removido.','info');
 }
@@ -3122,7 +3106,7 @@ function addSalesGoal(){
   if(!target||target<=0){toast('Informe um objetivo numérico.','error');return;}
   S.salesGoals.push({id:uuid(),label,target,done:0});
   $('sgLabel').value=''; $('sgTarget').value='';
-  save(); renderSalesGoals(); recalcMaturity();
+  autoSaveCalendar(); renderSalesGoals(); recalcMaturity();
   toast(`Meta "${label}" criada!`,'success');
 }
 
@@ -3216,6 +3200,79 @@ function renderMktMetasPanel(){
     </div>`).join('');
 }
 
+
+/* ═══════════════ SUPABASE — CALENDAR & SALES GOALS ═══════════════ */
+async function persistCalendarToSupabase(){
+  if(!supa||!S.user||!S.companyId) return;
+  try{
+    // Upsert calendar data as single JSON blob in company_intelligence
+    await supa.from('company_intelligence').upsert({
+      company_id:S.companyId,
+      ai_context:{
+        contentCalendar:S.contentCalendar,
+        salesGoals:S.salesGoals,
+        mktGoals:S.mktGoals,
+        maturityRealScore:S.maturityRealScore||0,
+        updated_at:new Date().toISOString()
+      }
+    },{onConflict:'company_id'});
+  }catch(e){console.error('persistCalendarToSupabase:',e);}
+}
+
+async function loadCalendarFromSupabase(){
+  if(!supa||!S.user||!S.companyId) return;
+  try{
+    const{data}=await supa.from('company_intelligence')
+      .select('ai_context').eq('company_id',S.companyId).single();
+    if(data?.ai_context){
+      const ctx=data.ai_context;
+      if(ctx.contentCalendar&&!Object.keys(S.contentCalendar).length)
+        S.contentCalendar=ctx.contentCalendar;
+      if(ctx.salesGoals?.length&&!S.salesGoals.length)
+        S.salesGoals=ctx.salesGoals;
+      if(ctx.mktGoals) S.mktGoals={...S.mktGoals,...ctx.mktGoals};
+      if(ctx.maturityRealScore) S.maturityRealScore=ctx.maturityRealScore;
+    }
+  }catch(e){console.error('loadCalendarFromSupabase:',e);}
+}
+
+// Auto-save calendar on important events (debounced)
+let _calSaveTimer=null;
+function autoSaveCalendar(){
+  save();
+  if(_calSaveTimer) clearTimeout(_calSaveTimer);
+  _calSaveTimer=setTimeout(()=>persistCalendarToSupabase(),2000); // 2s debounce
+}
+
+/* ═══════════════ SCHEDULE SUGGESTION ═══════════════ */
+function showScheduleSuggestion(calItems){
+  if(!calItems?.length) return;
+  const box=$('mktChat'); if(!box) return;
+  // Remove previous suggestion if exists
+  const prev=box.querySelector('.schedule-suggest');
+  if(prev) prev.remove();
+  const first=calItems[0];
+  const div=document.createElement('div');
+  div.className='schedule-suggest';
+  div.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);margin-top:6px;font-size:.82rem;';
+  div.innerHTML=`<span style="color:var(--muted)">📅 O agente sugeriu ${calItems.length} conteúdo(s)</span>
+    <button class="btn btn-primary btn-sm" style="padding:6px 12px;font-size:.78rem" onclick="prefillPanelFromAgent()">Usar no painel</button>`;
+  box.appendChild(div); box.scrollTop=box.scrollHeight;
+}
+
+function prefillPanelFromAgent(){
+  if(!S._lastAgentAcoes?.calendario?.length) return;
+  const first=S._lastAgentAcoes.calendario[0];
+  if(first.data) $('spData').value=first.data;
+  if(first.hora) $('spHora').value=first.hora;
+  if(first.titulo) $('spTema').value=first.titulo;
+  if(first.formato){spFmt=first.formato;document.querySelectorAll('#spFmtRow .cal-chip').forEach(b=>{b.className='cal-chip '+b.dataset.fmt;if(b.dataset.fmt===spFmt)b.classList.add('sel');});}
+  if(first.plataforma){spPlat=first.plataforma;document.querySelectorAll('#spPlatRow .cal-chip').forEach(b=>{b.className='cal-chip';if(b.dataset.plat===spPlat)b.classList.add('sel');});}
+  toast('Dados do agente carregados no painel!','success');
+  // Scroll to panel
+  document.querySelector('.cal-side-panel')?.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
 /* ═══════════════ INIT ═══════════════ */
 load();
 // Verificar sessão ativa no Supabase e restaurar login automaticamente
@@ -3252,6 +3309,8 @@ if(supa){
 $('navDiag').style.display='inline-flex';
 renderFormStep(); renderStepDots(); renderAuthMode();
 renderSalesStep(); renderSalesDots();
+// Initial maturity calculation
+S.maturityRealScore=calcMaturityScore();
 // Mkt tabs
 document.querySelectorAll('.mkt-tab').forEach(btn=>{
   btn.addEventListener('click',()=>switchMktTab(btn.dataset.mtab));
