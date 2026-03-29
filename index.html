@@ -2349,13 +2349,106 @@ async function mktReply(p){
   return`Com base no diagnóstico de ${empresa} (score ${d.sc}%, segmento: ${seg}), a orientação mais direta para sua pergunta é: ${d.direction} O próximo passo concreto é ${d.nextMove.toLowerCase()}`;
 }
 async function salesReply(p){
-  if(supa&&S.user){const resp=await callAgentGemini(p);if(resp)return resp;}
-  if(!S.salesProfile)return'Primeiro salve o diagnóstico de vendas para eu responder com base real no processo comercial.';
+  // Try Gemini first
+  if(supa&&S.user){
+    const resp=await callAgentGemini(p);
+    if(resp) return resp;
+  }
+  // Smart fallback usando dados reais do diagnóstico de vendas
+  if(!S.salesProfile) return'Primeiro complete o diagnóstico de vendas para eu orientar com base real no seu processo comercial.';
   const pl=p.toLowerCase();
-  if(pl.includes('lead'))return'Hoje o principal é parar de perder lead no caminho. Centralize registro, responda mais rápido e defina pelo menos duas tentativas de follow-up.';
-  if(pl.includes('follow'))return'Crie uma rotina mínima: contato no mesmo dia, retorno em 24h e novo toque com prova ou esclarecimento objetivo.';
-  if(pl.includes('gargalo'))return`Seu gargalo mais forte parece estar em ${S.salesProfile.weaknesses[0].toLowerCase()}`;
-  return`Com base no diagnóstico comercial, a orientação mais prática agora é: ${S.salesProfile.actions[0].toLowerCase()}. Depois disso, evolua para ${S.salesProfile.actions[1]?.toLowerCase()||'organizar o follow-up de forma consistente'}.`;
+  const sp=S.salesProfile;
+  const empresa=S.formData.companyName||'sua empresa';
+  const trava1=sp.weaknesses[0]||'processo comercial sem método claro';
+  const trava2=sp.weaknesses[1]||'follow-up inconsistente';
+  const acao1=sp.actions[0]||'criar um padrão de resposta para novos interessados';
+  const acao2=sp.actions[1]||'registrar todos os leads em um único lugar';
+  const acao3=sp.actions[2]||'definir uma rotina mínima de follow-up';
+
+  if(pl.includes('semana')||pl.includes('agora')||pl.includes('começar')||pl.includes('comecar')||pl.includes('primeiro passo')){
+    return`**Esta semana, foque em 3 ações concretas:**
+
+**1. Padronize a primeira resposta**
+Crie uma mensagem fixa para quem pede informação — apresentação clara, pergunta qualificadora e próximo passo definido. Não improvisar mais.
+
+**2. Centralize os leads**
+Escolha um lugar só: planilha, CRM simples ou até WhatsApp Business com etiquetas. Todo contato entra lá.
+
+**3. Defina follow-up mínimo**
+Se o lead não respondeu: retorno em 24h com um ângulo diferente. Duas tentativas antes de marcar como frio.
+
+O diagnóstico de ${empresa} aponta que ${trava1.toLowerCase()} é o principal gargalo. Resolver isso essa semana já muda o resultado.`;
+  }
+
+  if(pl.includes('padrão')||pl.includes('resposta')||pl.includes('mensagem')||pl.includes('script')){
+    return`**Script de primeira resposta para ${empresa}:**
+
+*"Olá [Nome]! Tudo bem? Vi que você se interessou por [produto/serviço].*
+
+*Para te atender melhor, me conta: qual é a sua principal necessidade agora? Está buscando [opção A] ou [opção B]?"*
+
+Depois da resposta, você tem contexto para personalizar. A regra é: **nunca mande tabela de preço sem entender o que a pessoa precisa.** Isso reduz rejeição por preço porque você ancora valor antes.`;
+  }
+
+  if(pl.includes('follow')||pl.includes('retorno')||pl.includes('lead frio')){
+    return`**Rotina de follow-up para ${empresa}:**
+
+- **Dia 1:** Primeira resposta padrão + pergunta qualificadora
+- **Dia 2:** Se não respondeu — manda prova social (depoimento, resultado, caso)
+- **Dia 4:** Se ainda não respondeu — manda um ângulo diferente (dor, urgência ou nova informação)
+- **Dia 7:** Fecha o ciclo: "Ainda faz sentido conversarmos?"
+
+Lead que não responde após 4 tentativas vai para lista de reengajamento no mês seguinte. Não abandona — reagenda.`;
+  }
+
+  if(pl.includes('objeção')||pl.includes('objecao')||pl.includes('preço')||pl.includes('preco')||pl.includes('caro')){
+    return`**Como responder objeção de preço:**
+
+Nunca desconte direto — isso desvaloriza. Em vez disso:
+
+1. **Valide:** "Entendo, faz sentido pensar no investimento."
+2. **Reancora:** "O que você perde por mês sem resolver isso?"
+3. **Compare:** "Quanto custa continuar do jeito que está?"
+4. **Ofereça alternativa:** parcela, entrada, escopo menor — não desconto puro.
+
+O diagnóstico mostra que ${trava1.toLowerCase()} é uma trava. Muitas vezes a objeção de preço é falta de clareza de valor — não é o preço em si.`;
+  }
+
+  if(pl.includes('lead')||pl.includes('prospecção')||pl.includes('prospeccao')||pl.includes('cliente novo')){
+    return`**Para gerar mais leads para ${empresa}:**
+
+**Canal principal agora:** Onde seus clientes já estão? Instagram, indicação, WhatsApp, evento local? Reforce o que já funciona antes de abrir novos canais.
+
+**Ação imediata:** Pegue os últimos 10 clientes e pergunte: "Conhece alguém que poderia se beneficiar do que a gente faz?" Indicação ativa gera lead qualificado sem custo.
+
+**Próximo nível:** Defina seu ICP (cliente ideal) — segmento, tamanho, dor principal. Com isso claro, sua comunicação atrai quem compra, não quem só pergunta.`;
+  }
+
+  if(pl.includes('meta')||pl.includes('objetivo')||pl.includes('vender mais')){
+    return`**Meta comercial para ${empresa}:**
+
+Comece com o que você pode medir:
+
+- Quantos contatos novos por semana?
+- Qual a taxa de conversão atual (de interessados para clientes)?
+- Qual o ticket médio?
+
+Com esses 3 números você sabe onde agir. Se fecha 2 de 10 contatos, melhorar a abordagem dobra as vendas sem precisar de mais leads.
+
+Use a aba **Metas Comerciais** para registrar e acompanhar.`;
+  }
+
+  // Default contextual
+  return`Com base no diagnóstico de ${empresa}, aqui está a orientação para sua pergunta:
+
+**Principal trava identificada:** ${trava1}
+
+**Próximas ações:**
+- ${acao1}
+- ${acao2}
+- ${acao3}
+
+Qual dessas você quer aprofundar? Posso detalhar scripts, processos ou abordagens específicas.`;
 }
 async function sendChat(inputId,chatId,replyFn){
   const inp=$(inputId); const p=inp.value.trim(); if(!p) return;
