@@ -2349,107 +2349,444 @@ async function mktReply(p){
   return`Com base no diagnóstico de ${empresa} (score ${d.sc}%, segmento: ${seg}), a orientação mais direta para sua pergunta é: ${d.direction} O próximo passo concreto é ${d.nextMove.toLowerCase()}`;
 }
 async function salesReply(p){
-  // Try Gemini first
   if(supa&&S.user){
     const resp=await callAgentGemini(p);
     if(resp) return resp;
   }
-  // Smart fallback usando dados reais do diagnóstico de vendas
-  if(!S.salesProfile) return'Primeiro complete o diagnóstico de vendas para eu orientar com base real no seu processo comercial.';
-  const pl=p.toLowerCase();
+
   const sp=S.salesProfile;
   const empresa=S.formData.companyName||'sua empresa';
-  const trava1=sp.weaknesses[0]||'processo comercial sem método claro';
-  const trava2=sp.weaknesses[1]||'follow-up inconsistente';
-  const acao1=sp.actions[0]||'criar um padrão de resposta para novos interessados';
-  const acao2=sp.actions[1]||'registrar todos os leads em um único lugar';
-  const acao3=sp.actions[2]||'definir uma rotina mínima de follow-up';
+  const pl=p.toLowerCase();
 
-  if(pl.includes('semana')||pl.includes('agora')||pl.includes('começar')||pl.includes('comecar')||pl.includes('primeiro passo')){
-    return`**Esta semana, foque em 3 ações concretas:**
+  if(!sp) return`Para orientar suas vendas com precisão, primeiro complete o diagnóstico comercial — as 10 perguntas aqui em cima. Com as respostas, consigo dar orientações específicas para o processo de vendas de ${empresa}.`;
 
-**1. Padronize a primeira resposta**
-Crie uma mensagem fixa para quem pede informação — apresentação clara, pergunta qualificadora e próximo passo definido. Não improvisar mais.
+  const trava1=sp.weaknesses[0]||'processo sem método claro';
+  const acao1=sp.actions[0]||'criar padrão de resposta';
+  const acao2=sp.actions[1]||'registrar todos os leads';
 
-**2. Centralize os leads**
-Escolha um lugar só: planilha, CRM simples ou até WhatsApp Business com etiquetas. Todo contato entra lá.
+  // ── Detecta números na mensagem (metas)
+  const nums=p.match(/\d+/g)||[];
+  const hasNums=nums.length>=2;
+  if(hasNums&&(pl.includes('contato')||pl.includes('convers')||pl.includes('ticket')||pl.includes('meta')||pl.includes('vender')||pl.includes('%'))){
+    const contacts=parseInt(nums[0])||5;
+    const convPct=parseInt(nums.find(n=>parseInt(n)<=100&&parseInt(n)>0))||50;
+    const ticket=parseInt(nums.find(n=>parseInt(n)>=100))||500;
+    const fechamentos=Math.round(contacts*(convPct/100));
+    const receita=fechamentos*ticket;
+    const semanas=4;
+    const contatosSemana=Math.ceil(contacts/semanas);
+    return`**Meta calculada para ${empresa}:**
 
-**3. Defina follow-up mínimo**
-Se o lead não respondeu: retorno em 24h com um ângulo diferente. Duas tentativas antes de marcar como frio.
+${contacts} contatos × ${convPct}% conversão = **${fechamentos} fechamentos × R$${ticket} = R$${receita.toFixed(0)} esse mês**
 
-O diagnóstico de ${empresa} aponta que ${trava1.toLowerCase()} é o principal gargalo. Resolver isso essa semana já muda o resultado.`;
+**Plano semanal para bater essa meta:**
+
+**Semana 1 — Reativar base (${contatosSemana} contatos/sem)**
+- Pegue os últimos 30 contatos do WhatsApp que nunca viraram clientes
+- Mande mensagem personalizada: *"Oi [Nome], tudo bem? Lembrei de você — ainda faz sentido conversarmos sobre [produto/serviço]?"*
+- Meta: ${contatosSemana} respostas qualificadas
+
+**Semana 2 — Indicação ativa**
+- Escolha seus 5 melhores clientes atuais
+- Pergunte direto: *"Você conhece alguém que está passando pelo mesmo problema que você tinha antes de contratar a gente?"*
+- Ofereça algo pelo esforço deles: desconto, bônus, reconhecimento
+- Meta: ${contatosSemana} indicações ativas
+
+**Semana 3 — Lista de transmissão**
+- Crie uma lista no WhatsApp com todos que já demonstraram interesse algum dia
+- Mande conteúdo de valor (dica, bastidor, resultado de cliente) — não oferta direta
+- No segundo contato: faça a oferta com prazo claro
+- Meta: ${contatosSemana} respostas novas
+
+**Semana 4 — Fechamento**
+- Volte para quem respondeu mas não comprou ainda
+- Use urgência real: vaga, prazo, condição especial que termina
+- Não deixe nenhum interessado sem resposta essa semana
+- Meta: fechar os ${fechamentos} contratos
+
+Com ${convPct}% de conversão, você precisa de ${contacts} contatos qualificados. O segredo é não depender de indicação passiva — ir atrás ativamente.`;
   }
 
-  if(pl.includes('padrão')||pl.includes('resposta')||pl.includes('mensagem')||pl.includes('script')){
-    return`**Script de primeira resposta para ${empresa}:**
+  // ── PROSPECÇÃO
+  if(pl.includes('prospect')||pl.includes('cliente novo')||pl.includes('atrair')||pl.includes('encontrar cliente')||pl.includes('onde achar')){
+    return`**Como prospectar clientes para ${empresa} sem verba de marketing:**
 
-*"Olá [Nome]! Tudo bem? Vi que você se interessou por [produto/serviço].*
+**1. Reativação de base (mais fácil e rápido)**
+Liste todo mundo que já te procurou e não comprou — nos últimos 6 a 12 meses. Mande uma mensagem simples: *"Oi [Nome], lembrei de você. Ainda faz sentido conversarmos?"* 30% costuma responder. Custo: zero.
 
-*Para te atender melhor, me conta: qual é a sua principal necessidade agora? Está buscando [opção A] ou [opção B]?"*
+**2. Indicação ativa (mais qualificada)**
+Não espere o cliente indicar. Pergunte diretamente aos seus 5 melhores clientes: *"Você conhece alguém com o mesmo problema que você tinha?"* A indicação pedida tem 3x mais chance de acontecer do que a espontânea.
 
-Depois da resposta, você tem contexto para personalizar. A regra é: **nunca mande tabela de preço sem entender o que a pessoa precisa.** Isso reduz rejeição por preço porque você ancora valor antes.`;
+**3. Lista de transmissão no WhatsApp**
+Agrupe contatos que já demonstraram interesse algum dia. Mande 1 conteúdo útil por semana (sem venda direta). Na 3ª semana, faça uma oferta. Essa sequência aquece contato frio sem parecer spam.
+
+**4. Parcerias locais**
+Quem atende o mesmo público que você mas não concorre? Exemplo: se você vende serviço para restaurantes, o fornecedor de embalagem tem uma lista de ouro. Propõe troca de indicação.
+
+**5. Stories de prova social**
+Um depoimento genuíno de cliente no stories gera mais lead do que qualquer anúncio. Peça para o cliente gravar 30 segundos contando o resultado. Faça isso 1x por semana.
+
+**O erro mais comum:** buscar novos leads antes de esgotar a base existente. Comece pelos que já te conhecem.`;
   }
 
-  if(pl.includes('follow')||pl.includes('retorno')||pl.includes('lead frio')){
-    return`**Rotina de follow-up para ${empresa}:**
+  // ── ABORDAGEM / PRIMEIRO CONTATO
+  if(pl.includes('abordagem')||pl.includes('primeiro contato')||pl.includes('como falar')||pl.includes('como abordar')||pl.includes('iniciar conversa')||pl.includes('script')||pl.includes('mensagem')||pl.includes('padrão')){
+    return`**Script de abordagem para ${empresa}:**
 
-- **Dia 1:** Primeira resposta padrão + pergunta qualificadora
-- **Dia 2:** Se não respondeu — manda prova social (depoimento, resultado, caso)
-- **Dia 4:** Se ainda não respondeu — manda um ângulo diferente (dor, urgência ou nova informação)
-- **Dia 7:** Fecha o ciclo: "Ainda faz sentido conversarmos?"
+**Regra de ouro:** nunca comece pela oferta. Comece pela curiosidade ou pelo problema.
 
-Lead que não responde após 4 tentativas vai para lista de reengajamento no mês seguinte. Não abandona — reagenda.`;
+**Modelo 1 — Reativação (para quem já te conhece):**
+*"Oi [Nome]! Tudo bem? Lembrei de você essa semana. [Motivo pessoal: vi que você postou sobre X / sei que você trabalha com Y]. Ainda está buscando solução para [problema]? Tenho uma novidade que pode te interessar."*
+
+**Modelo 2 — Indicação:**
+*"Oi [Nome], tudo bem? O [cliente que indicou] me falou de você e disse que você pode estar precisando de [resultado]. Posso te contar em 2 minutos como a gente ajudou ele?"*
+
+**Modelo 3 — Lead novo (interesse espontâneo):**
+*"Oi [Nome]! Vi que você se interessou por [produto/serviço]. Para te atender melhor: o que está te travando hoje em relação a isso?"*
+
+**Regras que aumentam resposta:**
+- Mensagem de até 3 linhas no primeiro contato — mais que isso assusta
+- Termine sempre com pergunta aberta — não deixa espaço para "não tenho interesse"
+- Nunca mande tabela de preço antes de entender o que a pessoa precisa
+- Use áudio no WhatsApp depois da segunda mensagem — humaniza e diferencia
+
+**O maior erro:** copiar e colar mensagem igual para todo mundo. Personalize pelo menos o nome e o contexto.`;
   }
 
-  if(pl.includes('objeção')||pl.includes('objecao')||pl.includes('preço')||pl.includes('preco')||pl.includes('caro')){
-    return`**Como responder objeção de preço:**
+  // ── FOLLOW-UP
+  if(pl.includes('follow')||pl.includes('retorno')||pl.includes('não respondeu')||pl.includes('nao respondeu')||pl.includes('sumiu')||pl.includes('lead frio')||pl.includes('cliente sumiu')){
+    return`**Sequência de follow-up para ${empresa}:**
 
-Nunca desconte direto — isso desvaloriza. Em vez disso:
+A maioria das vendas acontece do 5º ao 12º contato. A maioria dos vendedores desiste no 2º.
 
-1. **Valide:** "Entendo, faz sentido pensar no investimento."
-2. **Reancora:** "O que você perde por mês sem resolver isso?"
-3. **Compare:** "Quanto custa continuar do jeito que está?"
-4. **Ofereça alternativa:** parcela, entrada, escopo menor — não desconto puro.
+**Sequência completa:**
 
-O diagnóstico mostra que ${trava1.toLowerCase()} é uma trava. Muitas vezes a objeção de preço é falta de clareza de valor — não é o preço em si.`;
+**Dia 1 — Primeiro contato**
+Apresentação + pergunta qualificadora. Sem preço ainda.
+
+**Dia 2 — Se não respondeu**
+*"Oi [Nome], não sei se minha mensagem chegou. Mando um áudio de 30 segundos explicando como funciona?"*
+(áudio converte 2x mais do que texto em follow-up)
+
+**Dia 4 — Prova social**
+*"[Nome], enquanto isso, olha o que o [cliente X] conseguiu com a gente: [resultado concreto]. Faz sentido para você também?"*
+
+**Dia 7 — Novo ângulo**
+Aborde por outro ângulo: urgência, escassez, benefício diferente do que falou antes.
+*"[Nome], essa semana tenho uma condição especial para novos clientes. Vale a pena eu te contar?"*
+
+**Dia 14 — Fechamento de ciclo**
+*"[Nome], não quero incomodar. Só queria saber: ainda faz sentido conversarmos ou posso tirar você da lista por enquanto?"*
+Essa pergunta tem altíssima taxa de resposta — até quem não quer comprar responde.
+
+**Depois disso:** vai para lista de reengajamento mensal. Um conteúdo por mês. Sem pressão.
+
+**Regra:** nunca mande o mesmo texto duas vezes. Muda o canal, o ângulo, o formato.`;
   }
 
-  if(pl.includes('lead')||pl.includes('prospecção')||pl.includes('prospeccao')||pl.includes('cliente novo')){
-    return`**Para gerar mais leads para ${empresa}:**
+  // ── PROPOSTA / PREÇO
+  if(pl.includes('proposta')||pl.includes('preço')||pl.includes('preco')||pl.includes('valor')||pl.includes('quanto cobrar')||pl.includes('tabela')){
+    return`**Como apresentar preço e proposta para ${empresa}:**
 
-**Canal principal agora:** Onde seus clientes já estão? Instagram, indicação, WhatsApp, evento local? Reforce o que já funciona antes de abrir novos canais.
+**Nunca mande tabela de preço antes de entender o problema.**
+Quando você manda preço sem contexto, o cliente compara com o concorrente mais barato. Você perde por preço antes de mostrar valor.
 
-**Ação imediata:** Pegue os últimos 10 clientes e pergunte: "Conhece alguém que poderia se beneficiar do que a gente faz?" Indicação ativa gera lead qualificado sem custo.
+**Sequência correta:**
 
-**Próximo nível:** Defina seu ICP (cliente ideal) — segmento, tamanho, dor principal. Com isso claro, sua comunicação atrai quem compra, não quem só pergunta.`;
+**1. Diagnóstico primeiro**
+Faça 3 a 5 perguntas antes de falar qualquer número:
+- *"Qual é sua maior dificuldade hoje com isso?"*
+- *"Você já tentou resolver de outra forma?"*
+- *"Se isso estivesse resolvido, o que mudaria para você?"*
+
+**2. Apresente o resultado, não o serviço**
+Errado: *"Ofereço consultoria de marketing por R$500/mês"*
+Certo: *"Ajudo negócios como o seu a ter um plano claro de como crescer — o [cliente X] saiu de R$8k para R$22k em 4 meses"*
+
+**3. Ancore o preço na dor**
+*"Quanto você perde por mês sem resolver isso? Quanto custa continuar assim?"*
+Depois que o cliente mentaliza o custo do problema, o preço da solução parece menor.
+
+**4. Apresente o preço com confiança**
+Sem "seria" ou "mais ou menos". Diga o número com firmeza e fique em silêncio. Quem fala primeiro depois do preço, perde.
+
+**5. Tenha alternativas, não desconto**
+Em vez de reduzir preço, reduza escopo: *"Posso começar com a parte X por R$Y e a gente vai crescendo juntos"*`;
   }
 
-  if(pl.includes('meta')||pl.includes('objetivo')||pl.includes('vender mais')){
-    return`**Meta comercial para ${empresa}:**
+  // ── OBJEÇÃO
+  if(pl.includes('objeção')||pl.includes('objecao')||pl.includes('caro')||pl.includes('preciso pensar')||pl.includes('vou ver')||pl.includes('não tenho dinheiro')||pl.includes('nao tenho dinheiro')||pl.includes('depois')||pl.includes('não é o momento')){
+    return`**Como responder as principais objeções em ${empresa}:**
 
-Comece com o que você pode medir:
+**"Está caro"**
+Não desconte direto. Responda: *"Entendo. Em relação a quê você acha caro?"*
+Geralmente a objeção real não é preço — é falta de clareza de valor. Aprofunde o problema antes de mexer no número.
+Se precisar ajustar: reduza escopo, parcele, ou ofereça entrada menor. Nunca dê desconto sem pedir algo em troca (prazo menor, pagamento à vista, indicação).
 
-- Quantos contatos novos por semana?
-- Qual a taxa de conversão atual (de interessados para clientes)?
-- Qual o ticket médio?
+**"Preciso pensar"**
+*"Faz todo sentido. O que especificamente você precisa pensar? É o investimento, o momento, ou tem alguma dúvida que eu não respondi?"*
+Quase sempre tem uma objeção real escondida. Essa pergunta abre ela.
 
-Com esses 3 números você sabe onde agir. Se fecha 2 de 10 contatos, melhorar a abordagem dobra as vendas sem precisar de mais leads.
+**"Vou ver com meu marido/sócio"**
+*"Claro! O que você precisaria para que essa conversa com ele/ela seja fácil? Posso montar algo que ajude vocês dois a decidirem juntos?"*
+Ofereça participar da próxima conversa ou mande material que responde as dúvidas do terceiro.
 
-Use a aba **Metas Comerciais** para registrar e acompanhar.`;
+**"Não é o momento"**
+*"Entendo. Qual momento seria ideal? O que precisaria acontecer para isso fazer sentido?"*
+Define um prazo e agenda follow-up para aquela data. Não some.
+
+**"Deixa para o mês que vem"**
+Crie urgência real — não inventada: vagas limitadas, condição especial com prazo, aumento de preço programado.
+*"Posso garantir essa condição até sexta. Depois disso, provavelmente não consigo manter."*
+
+**Regra geral:** objeção é pedido de mais informação. Quem objeta ainda tem interesse.`;
   }
 
-  // Default contextual
-  return`Com base no diagnóstico de ${empresa}, aqui está a orientação para sua pergunta:
+  // ── FECHAMENTO
+  if(pl.includes('fechar')||pl.includes('fechamento')||pl.includes('como pedir')||pl.includes('cliente não decide')||pl.includes('nao decide')||pl.includes('finalizar venda')){
+    return`**Como fechar mais vendas em ${empresa}:**
 
-**Principal trava identificada:** ${trava1}
+**O erro mais comum:** não pedir o fechamento. Muitos donos de negócio apresentam tudo perfeitamente e ficam esperando o cliente decidir sozinho. Não funciona.
 
-**Próximas ações:**
+**Sinais de que o cliente está pronto para fechar:**
+- Faz perguntas sobre prazo ou entrega
+- Pergunta sobre formas de pagamento
+- Pede detalhes de implementação
+- Compara opções em voz alta
+- Diz *"faz sentido"* mais de uma vez
+
+**Como pedir o fechamento (direto e sem pressão):**
+*"Faz sentido para você? Como você quer seguir?"*
+*"Quer começar essa semana ou prefere semana que vem?"*
+(Dê duas opções de SIM — nunca sim ou não)
+
+**Fechamento por urgência real:**
+*"Tenho [X] vagas para esse mês. Se quiser garantir, precisamos definir até [data]. O que você acha?"*
+
+**Fechamento por resumo:**
+*"Então combinamos: você vai ter [resultado], no prazo de [X], por [valor]. Posso te mandar os dados para pagamento?"*
+Não pergunte se quer comprar. Pergunte como vai pagar.
+
+**Se o cliente ainda não decidiu:**
+Não insista. Marque o próximo passo: *"Quando você estiver pronto, entra em contato. Mas me permite falar com você na [data] para saber como está?"*
+
+**Regra:** toda conversa de vendas tem que terminar com um próximo passo definido. Nunca termina no ar.`;
+  }
+
+  // ── REATIVAÇÃO
+  if(pl.includes('reativar')||pl.includes('cliente antigo')||pl.includes('base de clientes')||pl.includes('quem já comprou')||pl.includes('cliente sumido')||pl.includes('ex-cliente')){
+    return`**Como reativar clientes antigos de ${empresa}:**
+
+Vender para quem já comprou é 5x mais barato do que conquistar um cliente novo. É a mina de ouro mais ignorada pelos pequenos negócios.
+
+**Quem reativar primeiro:**
+1. Clientes que compraram mais de uma vez — maior chance de comprar de novo
+2. Clientes satisfeitos que simplesmente pararam — sem motivo aparente
+3. Clientes que pediram orçamento mas não fecharam — já conhecem você
+
+**Script de reativação:**
+*"Oi [Nome]! Quanto tempo. Estava pensando em você essa semana. Como estão as coisas com [contexto do que comprou antes]? Temos novidades que podem te interessar."*
+
+**Nunca comece pedindo para comprar.** Mostre que lembrou da pessoa. Pergunte como está. A venda vem depois, naturalmente.
+
+**Cadência de reativação de base:**
+- Mês 1: conteúdo útil sem oferta (dica, novidade, resultado)
+- Mês 2: oferta exclusiva para quem já é cliente *"Para quem já confiou na gente, condição especial"*
+- Mês 3: convite para novidade ou lançamento
+
+**Frequência ideal:** 1 contato por mês. Mais do que isso incomoda. Menos do que isso esquece.
+
+**Ação imediata:** Liste seus 20 últimos clientes. Mande hoje uma mensagem perguntando como estão. Sem oferta. Só presença. Observe quem responde — esses são seus leads mais quentes agora.`;
+  }
+
+  // ── PROCESSO / CRM
+  if(pl.includes('organizar')||pl.includes('processo')||pl.includes('crm')||pl.includes('registrar')||pl.includes('controlar')||pl.includes('acompanhar lead')||pl.includes('rotina')){
+    return`**Como montar um processo de vendas simples para ${empresa}:**
+
+Você não precisa de CRM caro. Precisa de um sistema que você realmente use.
+
+**CRM no WhatsApp (mais simples):**
+Use etiquetas do WhatsApp Business:
+- 🟡 Novo interesse
+- 🔵 Em negociação
+- 🟢 Fechado
+- 🔴 Perdido
+- ⚪ Reativar depois
+
+Move o contato entre etiquetas conforme avança. Visualização simples, sem planilha.
+
+**CRM em planilha (um pouco mais robusto):**
+Colunas: Nome | Contato | Produto/Serviço | Valor | Status | Último contato | Próximo passo | Data próximo contato
+
+Atualiza todo dia. 10 minutos é suficiente.
+
+**Rotina semanal de vendas para pequeno negócio:**
+- **Segunda:** revisa pipeline — quem está em cada etapa
+- **Terça e Quarta:** prospecção ativa — novos contatos
+- **Quinta:** follow-up — retorna quem não respondeu
+- **Sexta:** fechamento — pressiona os que estão quentes
+
+**O que medir toda semana:**
+- Quantos novos contatos entrou
+- Quantas propostas fez
+- Quantos fechou
+- Taxa de conversão (fechados ÷ contatos)
+
+Com esses 4 números você sabe exatamente onde o processo está falhando.
+
+**Diagnóstico de ${empresa}** mostra que ${trava1.toLowerCase()} é a principal trava. Um processo mínimo resolve isso sem precisar de ferramenta cara.`;
+  }
+
+  // ── METAS SEM NÚMEROS ESPECÍFICOS
+  if(pl.includes('meta')||pl.includes('objetivo')||pl.includes('quanto vender')||pl.includes('projeção')||pl.includes('crescer')){
+    return`**Como definir e acompanhar metas de vendas em ${empresa}:**
+
+**Os 3 números que todo pequeno negócio precisa saber:**
+
+**1. Ticket médio**
+Quanto você recebe em média por venda? Some as últimas 10 vendas e divida por 10.
+
+**2. Taxa de conversão**
+De cada 10 pessoas que demonstram interesse, quantas compram? Se você não sabe, comece a registrar agora.
+
+**3. Meta de receita**
+Quanto você quer faturar esse mês? Divida pelo ticket médio — esse é o número de vendas que você precisa. Divida pela taxa de conversão — esse é o número de contatos que você precisa.
+
+**Exemplo prático:**
+Meta: R$5.000 | Ticket: R$500 | Conversão: 40%
+→ Precisa de 10 vendas → Precisa de 25 contatos qualificados esse mês → 6 a 7 contatos por semana
+
+**Como não errar na meta:**
+- Metas irreais desmotivam. Comece com 20% acima do que você faz hoje.
+- Quebre a meta mensal em semanal — é mais fácil de acompanhar e corrigir.
+- Se na semana 2 você está abaixo, ainda dá tempo de ajustar a estratégia.
+
+**Use a aba Metas Comerciais** aqui no sistema para registrar e acompanhar. Me diga seus números (ticket médio, taxa de conversão, meta do mês) que eu calculo o plano completo para você.`;
+  }
+
+  // ── WHATSAPP ESPECÍFICO
+  if(pl.includes('whatsapp')||pl.includes('zap')||pl.includes('lista de transmissão')||pl.includes('status')||pl.includes('stories')){
+    return`**Como usar o WhatsApp para vender mais em ${empresa}:**
+
+**1. Lista de transmissão (não é grupo)**
+Diferente de grupo, cada pessoa recebe como mensagem individual — parece pessoal.
+- Crie listas por segmento: clientes ativos, interessados, parceiros
+- Limite: 256 contatos por lista. Crie quantas listas precisar.
+- Frequência: 1 a 2 mensagens por semana. Mais do que isso vira spam.
+
+**Sequência que funciona:**
+- Semana 1: conteúdo útil (dica, curiosidade sobre seu setor)
+- Semana 2: prova social (resultado de cliente, bastidor)
+- Semana 3: oferta com prazo claro
+
+**2. Status do WhatsApp**
+Mais ignorado e mais poderoso. Todo seu contato vê — sem custo.
+- Poste resultado de cliente real
+- Mostre bastidor do seu trabalho
+- Faça oferta por tempo limitado com link direto
+- Frequência: 2 a 3 por dia nos dias de campanha
+
+**3. WhatsApp Business — configure agora se não tem:**
+- Catálogo de produtos/serviços
+- Mensagem automática de ausência
+- Mensagem de boas-vindas para novos contatos
+- Etiquetas para organizar leads (como CRM básico)
+- Link de clique para abrir conversa (wa.me/seunumero)
+
+**4. Nunca mande áudio longo no primeiro contato.**
+Áudio longo no início assusta. Use texto curto para o primeiro contato. Áudio a partir da segunda mensagem — humaniza e diferencia.
+
+**Erro comum:** salvar contato e nunca mais falar. Toda pessoa que salvou seu número já demonstrou algum interesse. Essa é sua lista mais quente.`;
+  }
+
+  // ── INDICAÇÃO
+  if(pl.includes('indicação')||pl.includes('indicacao')||pl.includes('referral')||pl.includes('indicar')||pl.includes('boca a boca')){
+    return`**Como gerar indicações de forma ativa em ${empresa}:**
+
+Indicação não acontece por acidente — ela precisa ser pedida e facilitada.
+
+**Quando pedir indicação:**
+O melhor momento é logo após o cliente ter um resultado positivo — quando ele ainda está animado. Não espere semanas.
+
+**Script direto:**
+*"[Nome], fico muito feliz que você está satisfeito. Posso te pedir um favor? Você conhece alguém que está passando pelo mesmo problema que você tinha antes? Sua indicação significa muito para mim."*
+
+**Como facilitar a indicação:**
+Dê a ele a mensagem pronta para encaminhar:
+*"Amigo, te indico o [seu nome]. Me ajudou muito com [resultado]. O contato é [seu WhatsApp]. Fala que fui eu que indiquei."*
+
+**Programa de indicação simples:**
+- Desconto na próxima compra
+- Bônus em serviço
+- Reconhecimento público (stories agradecendo)
+- Comissão se fizer sentido para o seu modelo
+
+**Quem pedir:**
+1. Seus 5 clientes mais satisfeitos — pergunte pessoalmente
+2. Clientes que renovaram ou compraram mais de uma vez
+3. Clientes que elogiaram espontaneamente
+
+**Frequência:**
+Peça indicação 1 vez por trimestre para cada cliente. Mais do que isso fica chato.
+
+**Resultado esperado:**
+Se você tiver 20 clientes ativos e pedir indicação para todos esse mês, a média é de 4 a 6 novos contatos qualificados — sem custo nenhum.`;
+  }
+
+  // ── DIAGNÓSTICO DE PRODUTO/SERVIÇO
+  if(pl.includes('produto')||pl.includes('serviço')||pl.includes('servico')||pl.includes('oferta')||pl.includes('o que vendo')||pl.includes('o que ofereço')){
+    return`**Como deixar a oferta de ${empresa} mais clara e irresistível:**
+
+A maioria dos pequenos negócios perde venda não por falta de produto, mas por falta de clareza na oferta.
+
+**Teste do elevador:**
+Você consegue explicar o que você faz em 10 segundos para um estranho? Se não, sua oferta não está clara.
+
+**Estrutura de oferta que converte:**
+*"Eu ajudo [quem] a [resultado específico] sem [principal dor/obstáculo]"*
+
+Exemplo: *"Eu ajudo donos de restaurante a lotar a agenda nos finais de semana sem precisar de agência cara"*
+
+**Os 3 elementos que toda oferta precisa ter:**
+1. **Resultado claro** — não "consultoria de marketing" mas "20% mais clientes em 90 dias"
+2. **Prazo** — quando o cliente vai ver resultado?
+3. **Garantia ou risco zero** — o que acontece se não funcionar?
+
+**O que fazer agora:**
+Reescreva sua oferta com essa estrutura e teste nas próximas 5 abordagens. Compare a resposta com o que você falava antes.
+
+**Diagnóstico de ${empresa}** aponta ${trava1.toLowerCase()} como trava. Muitas vezes a raiz disso é uma oferta que não comunica valor suficiente para justificar a decisão de compra.`;
+  }
+
+  // ── DEFAULT CONTEXTUAL RICO
+  const diag = S.diag;
+  const score = diag?.sc||0;
+  return`**DM I.A Vendas — orientação para ${empresa}:**
+
+Com base no seu diagnóstico comercial, aqui estão as prioridades:
+
+**Principal trava:** ${trava1}
+
+**Ações recomendadas:**
 - ${acao1}
 - ${acao2}
-- ${acao3}
+- ${sp.actions[2]||'estabelecer rotina mínima de contatos semanais'}
 
-Qual dessas você quer aprofundar? Posso detalhar scripts, processos ou abordagens específicas.`;
+**Posso te orientar em detalhes sobre:**
+- 📱 Como prospectar pelo WhatsApp
+- 💬 Script de abordagem para o primeiro contato
+- 🔄 Sequência de follow-up quando o cliente some
+- 💰 Como apresentar preço sem perder a venda
+- 🚫 Como responder objeções comuns
+- ✅ Como pedir o fechamento
+- 🔁 Como reativar clientes antigos
+- 📊 Como montar um processo simples de vendas
+- 🎯 Como definir e bater metas esse mês
+
+Me diga o que está travando mais hoje nas suas vendas e eu oriento com detalhes práticos.`;
 }
+
+
 async function sendChat(inputId,chatId,replyFn){
   const inp=$(inputId); const p=inp.value.trim(); if(!p) return;
   addMsg($(chatId),p,'user'); inp.value='';
