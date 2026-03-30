@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v33</title>
+<title>DigitalMind v34</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -707,6 +707,153 @@ h1 em{font-style:normal;color:var(--primary);}
 .stage-badge.current{background:rgba(34,197,94,.12);color:var(--success);border:1px solid rgba(34,197,94,.25);}
 .stage-badge.other{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);}
 
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — MOBILE FIRST
+   ═══════════════════════════════════════════════ */
+
+/* Hamburger button — hidden on desktop */
+.mobile-menu-btn{display:none!important;font-size:1.3rem;padding:6px 10px;background:rgba(255,255,255,.08)!important;border-radius:10px;}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:199;}
+.sidebar-overlay.active{display:block;}
+
+/* ── 1024px — tablets landscape */
+@media(max-width:1024px){
+  :root{--sw:190px;}
+  .info-grid{grid-template-columns:1fr 1fr!important;}
+  .dash-cards{grid-template-columns:1fr 1fr!important;}
+  .crm-board{grid-template-columns:repeat(3,1fr)!important;}
+  .stages-grid{grid-template-columns:repeat(3,1fr)!important;}
+  .evo-layout{grid-template-columns:1fr!important;}
+  .evo-score-card{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  .chat-layout{grid-template-columns:1fr!important;}
+  .chat-layout > .card:last-child{display:none;}
+}
+
+/* ── 768px — tablets portrait */
+@media(max-width:768px){
+  .fin-kpis{grid-template-columns:1fr 1fr!important;}
+  .fin-overview-grid{grid-template-columns:1fr!important;}
+
+  :root{--sw:0px;}
+
+  /* Sidebar vira drawer lateral */
+  .sidebar{
+    position:fixed!important;left:-260px;top:61px;width:240px!important;
+    height:calc(100vh - 61px);z-index:200;transition:left .28s ease;
+    background:rgba(4,12,26,.98)!important;box-shadow:4px 0 24px rgba(0,0,0,.4);
+  }
+  .sidebar.mobile-open{left:0!important;}
+  .mobile-menu-btn{display:inline-flex!important;}
+  .navArea-text{display:none;}
+
+  .dash-main{padding:16px 14px!important;}
+  .mod-header{margin-bottom:20px!important;}
+  .mod-header h2{font-size:1.3rem!important;}
+
+  /* Grids → 1 coluna */
+  .info-grid{grid-template-columns:1fr!important;}
+  .dash-cards{grid-template-columns:1fr 1fr!important;}
+  .chat-layout{grid-template-columns:1fr!important;}
+  .chat-layout > .card:last-child{display:none!important;}
+  .evo-layout{grid-template-columns:1fr!important;}
+  .evo-score-card{display:block!important;}
+
+  /* CRM */
+  .crm-board{grid-template-columns:repeat(2,minmax(160px,1fr))!important;}
+  .crm-header{flex-direction:column;align-items:flex-start!important;}
+  .crm-filters{width:100%;overflow-x:auto;padding-bottom:4px;}
+
+  /* Estágios */
+  .stages-grid{grid-template-columns:1fr 1fr!important;}
+  .stage-detail > div[style*="grid-template-columns:1fr 1fr"]{
+    grid-template-columns:1fr!important;
+  }
+
+  /* Vendas: DM + metas em coluna */
+  #salesDoneWrap2 > div[style*="grid-template-columns"]{
+    grid-template-columns:1fr!important;
+  }
+
+  /* Calendário popup */
+  .cal-popup-body{padding:14px 12px!important;}
+  .cal-weekdays div,.cal-day{font-size:.72rem!important;}
+
+  /* Financeiro tabs */
+  .fin-tabs{flex-wrap:wrap;gap:6px!important;}
+  .fin-tab{flex:1;min-width:80px;font-size:.75rem!important;padding:8px 6px!important;}
+
+  /* Topnav */
+  .topnav{padding:0 12px!important;gap:6px!important;}
+  #brandTitle{font-size:.95rem!important;}
+
+  /* vd summary bar */
+  .vd-summary-bar{flex-direction:column;align-items:flex-start!important;gap:8px!important;}
+
+  /* Form steps */
+  .step-progress{margin-bottom:12px!important;}
+  .form-grid{grid-template-columns:1fr!important;}
+}
+
+/* ── 480px — smartphones */
+@media(max-width:480px){
+  .vd-chat-metas-grid{grid-template-columns:1fr!important;}
+
+  .topnav{padding:0 10px!important;}
+  #brandSub{display:none!important;}
+  .dash-main{padding:12px 10px!important;}
+
+  /* Maturidade digital no dash */
+  .dash-cards{grid-template-columns:1fr 1fr!important;}
+  .dash-metric-val{font-size:1.6rem!important;}
+
+  /* Info cards full */
+  .info-card{padding:14px!important;}
+  .info-grid{gap:10px!important;}
+
+  /* Chat */
+  .chat-box{min-height:240px!important;max-height:380px!important;}
+  .chat-input-row{flex-direction:column;gap:8px!important;}
+  .chat-input-row input{width:100%!important;}
+  .chat-input-row .btn{width:100%!important;}
+
+  /* Modais */
+  .cal-event-card,.crm-modal,.cal-popup-modal{padding:18px 14px!important;border-radius:18px!important;}
+  .cal-event-grid{grid-template-columns:1fr!important;}
+
+  /* CRM kanban scroll horizontal */
+  .crm-board{grid-template-columns:repeat(2,minmax(140px,1fr))!important;}
+
+  /* Stages single col */
+  .stages-grid{grid-template-columns:1fr 1fr!important;}
+  .stage-card{padding:12px!important;}
+  .stage-num{font-size:1.4rem!important;}
+
+  /* Tabs wrap */
+  .mkt-tabs,.fin-tabs{flex-wrap:wrap!important;}
+  .mkt-tab,.fin-tab{flex:1!important;min-width:70px!important;font-size:.72rem!important;padding:8px 4px!important;}
+
+  /* Buttons */
+  .btn{font-size:.82rem!important;}
+
+  /* Evo layout */
+  .h-bar-row{overflow-x:auto!important;}
+
+  /* Topnav area button — show only icon */
+  #navArea span:last-child{display:none!important;}
+}
+
+/* Prevent horizontal scroll on body */
+body{overflow-x:hidden!important;}
+.dash-layout{overflow-x:hidden!important;}
+
+
+/* ══ FINANCIAL IMPROVEMENTS ══ */
+.fin-alert.success{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25);color:var(--success);}
+.fin-alert.warn{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.25);color:#f59e0b;}
+.fin-alert.danger{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--danger);}
+#finResumoCard{background:rgba(75,140,255,.04);border:1px solid rgba(75,140,255,.12);}
+
 </style>
 </head>
 <body>
@@ -873,7 +1020,8 @@ h1 em{font-style:normal;color:var(--primary);}
   </div>
   <nav class="topnav">
     <button class="topnav-btn active" id="navDiag" style="display:none">Diagnóstico</button>
-    <button class="topnav-btn" id="navArea"><span class="conn-dot" id="connDot"></span><span>Área da Empresa</span></button>
+    <button class="topnav-btn" id="navArea"><span class="conn-dot" id="connDot"></span><span class="navArea-text">Área da Empresa</span></button>
+    <button class="topnav-btn mobile-menu-btn hidden" id="mobileMenuBtn" onclick="toggleMobileMenu()" aria-label="Menu">☰</button>
   </nav>
 </header>
 
@@ -980,6 +1128,7 @@ h1 em{font-style:normal;color:var(--primary);}
 </section>
 
 <!-- PAGE: DASHBOARD -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileMenu()"></div>
 <section class="page" id="page-dashboard">
   <div class="dash-layout">
     <aside class="sidebar">
@@ -1199,7 +1348,7 @@ h1 em{font-style:normal;color:var(--primary);}
             <h2>Seu agente comercial</h2>
             <p>Orientação estratégica com base no seu processo de vendas. Pergunte sobre prospecção, abordagem, follow-up, objeções e fechamento.</p>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+          <div class="vd-chat-metas-grid" style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
             <div class="card">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
                 <h3>Converse com DM Vendas</h3>
@@ -1263,16 +1412,47 @@ h1 em{font-style:normal;color:var(--primary);}
             <h3>📊 DRE — Demonstrativo de Resultado</h3>
             <div id="dreContent"></div>
           </div>
+          <!-- META DE RECEITA -->
+          <div class="fchart-card" style="margin-bottom:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <h3>🎯 Meta de Receita do Mês</h3>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="number" id="finMetaInput" placeholder="Ex.: 5000" style="width:120px;padding:7px 10px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);font-size:.84rem;font-family:inherit;outline:none;"/>
+                <button class="btn btn-success btn-sm" onclick="setFinMeta()">Definir meta</button>
+              </div>
+            </div>
+            <div id="finMetaBar"></div>
+          </div>
+
+          <!-- RESUMO EM LINGUAGEM NATURAL -->
+          <div class="fchart-card" style="margin-bottom:14px" id="finResumoCard">
+            <h3 style="margin-bottom:10px">📋 Resumo do período</h3>
+            <p id="finResumoTexto" style="font-size:.86rem;color:var(--muted);line-height:1.75"></p>
+          </div>
+
+          <!-- EVOLUÇÃO MENSAL -->
           <div class="fin-charts-row">
             <div class="fchart-card">
-              <h3>Fluxo de caixa — Receitas vs Despesas</h3>
-              <div class="chart-wrap"><div class="chart-empty" id="fceFluxo"><div class="ci">📈</div><p>Adicione lançamentos para ver o gráfico</p></div><canvas id="fluxoChart" style="display:none"></canvas></div>
+              <h3>📈 Evolução mensal — Receita vs Despesa</h3>
+              <p style="font-size:.76rem;color:var(--muted);margin-bottom:10px">Comparativo dos últimos meses — veja se está crescendo ou estagnando</p>
+              <div class="chart-wrap"><div class="chart-empty" id="fceEvolucao"><div class="ci">📈</div><p>Adicione lançamentos em meses diferentes para ver a evolução</p></div><canvas id="evolucaoChart" style="display:none"></canvas></div>
             </div>
             <div class="fchart-card">
-              <h3>Composição das despesas</h3>
+              <h3>🍩 Composição das despesas</h3>
+              <p style="font-size:.76rem;color:var(--muted);margin-bottom:10px">Onde o dinheiro está saindo — com valores e percentuais</p>
               <div class="chart-wrap"><div class="chart-empty" id="fceCompo"><div class="ci">🍩</div><p>Adicione despesas para ver a composição</p></div><canvas id="compoChart" style="display:none"></canvas></div>
+              <div id="compoLegenda" style="margin-top:10px"></div>
             </div>
           </div>
+
+          <!-- TENDÊNCIA DE SALDO (linha) -->
+          <div class="fchart-card" style="margin-bottom:14px">
+            <h3>💹 Tendência de saldo</h3>
+            <p style="font-size:.76rem;color:var(--muted);margin-bottom:10px">Seu caixa está crescendo ou caindo? Cada ponto é o saldo acumulado no dia</p>
+            <div class="chart-wrap" style="height:140px"><div class="chart-empty" id="fceTendencia"><div class="ci">💹</div><p>Adicione lançamentos para ver a tendência</p></div><canvas id="tendenciaChart" style="display:none"></canvas></div>
+          </div>
+
+          <!-- TRANSAÇÕES -->
           <div class="fchart-card" id="allTxPanel" style="display:none">
             <h3>Todas as transações</h3>
             <div id="allTxList"></div>
@@ -1484,11 +1664,12 @@ const S = {
   salesGoals: [],
   maturityRealScore: 0,
   salesLeads: [],  // CRM leads
+  finMeta: null  // meta de receita mensal
   _lastAgentAcoes: null,
   businessStage: null  // 1-5 detected automatically
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v33';
+const SKEY = 'dm_v34';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -1511,7 +1692,7 @@ function save(){
     salesAnswers:S.salesAnswers, financial:S.financial,
     categories:S.categories, contacts:S.contacts, products:S.products,
     evoHistory:S.evoHistory, ci:S.ci, companyId:S.companyId,
-    mktGoals:S.mktGoals, contentCalendar:S.contentCalendar, salesGoals:S.salesGoals, maturityRealScore:S.maturityRealScore||0, salesLeads:S.salesLeads
+    mktGoals:S.mktGoals, contentCalendar:S.contentCalendar, salesGoals:S.salesGoals, maturityRealScore:S.maturityRealScore||0, salesLeads:S.salesLeads, finMeta:S.finMeta||null
   }));}catch(e){}
 }
 function load(){
@@ -1533,6 +1714,7 @@ function load(){
     if(d.mktGoals)  S.mktGoals=d.mktGoals||{week:null,month:null};
     if(d.maturityRealScore) S.maturityRealScore=d.maturityRealScore||0;
     if(d.salesLeads) S.salesLeads=d.salesLeads||[];
+    if(d.finMeta) S.finMeta=d.finMeta;
     if(d.contentCalendar) S.contentCalendar=d.contentCalendar||{};
     if(d.salesGoals) S.salesGoals=d.salesGoals||[];
   }catch(e){}
@@ -1872,7 +2054,7 @@ function goToStep(s){
   if(s==='diagnostico') $('page-diagnostico').classList.add('active');
   if(s==='resultado') $('page-resultado').classList.add('active');
   if(s==='auth') $('page-auth').classList.add('active');
-  if(s==='dashboard'&&S.isLogged) $('page-dashboard').classList.add('active');
+  if(s==='dashboard'&&S.isLogged){$('page-dashboard').classList.add('active');handleResize();}
   renderFormStep(); renderAuthMode(); renderActiveModule();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -2239,18 +2421,155 @@ function renderTxList(tipo){
   }).join('');
 }
 
+function setFinMeta(){
+  const v=parseFloat($('finMetaInput')?.value||'0');
+  if(!v||v<=0){toast('Informe um valor válido.','error');return;}
+  S.finMeta=v;
+  if($('finMetaInput')) $('finMetaInput').value='';
+  save(); renderFinOverview();
+  toast(`Meta de R$${fmtBRL(v)} definida!`,'success');
+}
+
+function renderFinMeta(receitaMes){
+  const el=$('finMetaBar'); if(!el) return;
+  if(!S.finMeta){
+    el.innerHTML=`<p style="font-size:.82rem;color:var(--muted)">Defina uma meta de receita para acompanhar seu progresso mensal.</p>`;
+    if($('finMetaInput')) $('finMetaInput').value='';
+    return;
+  }
+  const pct=Math.min(100,Math.round((receitaMes/S.finMeta)*100));
+  const restante=Math.max(0,S.finMeta-receitaMes);
+  const cor=pct>=100?'var(--success)':pct>=60?'#f59e0b':'var(--danger)';
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:.84rem;font-weight:700">Realizado: <span style="color:${cor}">${fmtBRL(receitaMes)}</span></span>
+      <span style="font-size:.84rem;color:var(--muted)">Meta: ${fmtBRL(S.finMeta)}</span>
+      <span style="font-size:.9rem;font-weight:800;color:${cor}">${pct}%</span>
+    </div>
+    <div style="background:rgba(255,255,255,.08);border-radius:999px;height:12px;overflow:hidden;margin-bottom:8px">
+      <div style="height:100%;width:${pct}%;background:${cor};border-radius:999px;transition:width .5s ease"></div>
+    </div>
+    <p style="font-size:.78rem;color:var(--muted)">${pct>=100?'🎉 Meta batida! Parabéns!':restante>0?`Faltam ${fmtBRL(restante)} para bater a meta desse mês.`:''}</p>
+    <button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:.74rem" onclick="S.finMeta=null;save();renderFinOverview()">Remover meta</button>`;
+}
+
+function renderFinResumo(txns, tr, td, saldo, mg){
+  const el=$('finResumoTexto'); if(!el) return;
+  const card=$('finResumoCard'); if(!txns.length){if(card)card.style.display='none';return;}
+  if(card) card.style.display='block';
+
+  const hoje=new Date(); const mesAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  const txMes=txns.filter(t=>t.data?.startsWith(mesAtual));
+  const trMes=txMes.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
+  const tdMes=txMes.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
+
+  // Maior despesa
+  const dep=txns.filter(t=>t.tipo==='despesa');
+  const depByCat={};
+  dep.forEach(t=>{const k=t.cat||'Outros';depByCat[k]=(depByCat[k]||0)+t.valor;});
+  const maiorCat=Object.entries(depByCat).sort((a,b)=>b[1]-a[1])[0];
+
+  // Dias sem lançamento
+  const sorted=txns.slice().sort((a,b)=>new Date(b.data||'').getTime()-new Date(a.data||'').getTime());
+  const ultimoLanc=sorted[0]?.data;
+  const diasSemLanc=ultimoLanc?Math.floor((hoje.getTime()-new Date(ultimoLanc+'T00:00:00').getTime())/(1000*60*60*24)):null;
+
+  // Meses anteriores para comparativo
+  const mesAnterior=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
+  const mesAntStr=`${mesAnterior.getFullYear()}-${String(mesAnterior.getMonth()+1).padStart(2,'0')}`;
+  const trAnt=txns.filter(t=>t.tipo==='receita'&&t.data?.startsWith(mesAntStr)).reduce((a,t)=>a+t.valor,0);
+  const varPct=trAnt>0?Math.round(((trMes-trAnt)/trAnt)*100):null;
+
+  const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const nomeMes=MESES[hoje.getMonth()];
+
+  let texto='';
+  if(txMes.length){
+    texto+=`Em ${nomeMes}, você faturou <strong>${fmtBRL(trMes)}</strong> e gastou <strong>${fmtBRL(tdMes)}</strong>, sobrando <strong style="color:${trMes-tdMes>=0?'var(--success)':'var(--danger)'}">${fmtBRL(trMes-tdMes)}</strong>. `;
+  }
+  if(maiorCat) texto+=`Sua maior despesa foi <strong>${maiorCat[0]}</strong> (${fmtBRL(maiorCat[1])}). `;
+  if(varPct!==null) texto+=`Comparado ao mês anterior, sua receita ${varPct>=0?`cresceu <strong style="color:var(--success)">${varPct}%</strong>`:`caiu <strong style="color:var(--danger)">${Math.abs(varPct)}%</strong>`}. `;
+  if(saldo>=0) texto+=`Saldo geral positivo de <strong>${fmtBRL(saldo)}</strong> com margem de ${mg.toFixed(1)}%.`;
+  else texto+=`Atenção: saldo geral negativo de <strong style="color:var(--danger)">${fmtBRL(saldo)}</strong>. Revise as despesas.`;
+  if(diasSemLanc!==null&&diasSemLanc>=5) texto+=` ⚠️ Você não registra lançamentos há <strong>${diasSemLanc} dias</strong> — mantenha o controle atualizado.`;
+
+  el.innerHTML=texto;
+}
+
+function renderEvolucaoChart(txns){
+  const el=$('evolucaoChart'); const empty=$('fceEvolucao'); if(!el) return;
+  // Group by month
+  const porMes={};
+  txns.forEach(t=>{
+    const m=t.data?.slice(0,7); if(!m) return;
+    if(!porMes[m]) porMes[m]={rec:0,dep:0};
+    if(t.tipo==='receita') porMes[m].rec+=t.valor;
+    else porMes[m].dep+=t.valor;
+  });
+  const meses=Object.keys(porMes).sort().slice(-6);
+  if(meses.length<2){if(empty)empty.style.display='flex';el.style.display='none';return;}
+  if(empty)empty.style.display='none'; el.style.display='block';
+  if(window._evolucaoChart) window._evolucaoChart.destroy();
+  const MESES_ABREV=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const labels=meses.map(m=>{const [y,mo]=m.split('-');return MESES_ABREV[parseInt(mo)-1]+'/'+y.slice(2);});
+  window._evolucaoChart=new Chart(el,{type:'bar',
+    data:{labels,datasets:[
+      {label:'Receita',data:meses.map(m=>porMes[m].rec),backgroundColor:'rgba(34,197,94,.65)',borderRadius:6,borderWidth:0},
+      {label:'Despesa',data:meses.map(m=>porMes[m].dep),backgroundColor:'rgba(239,68,68,.65)',borderRadius:6,borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8fa8c4',font:{size:11}}},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtBRL(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',callback:v=>fmtBRL(v)}}}}
+  });
+}
+
+function renderTendenciaChart(txns){
+  const el=$('tendenciaChart'); const empty=$('fceTendencia'); if(!el) return;
+  const sorted=txns.slice().sort((a,b)=>new Date(a.data||'').getTime()-new Date(b.data||'').getTime());
+  if(sorted.length<2){if(empty)empty.style.display='flex';el.style.display='none';return;}
+  // Calculate running balance
+  let saldo=0;
+  const pontos=sorted.map(t=>{saldo+=t.tipo==='receita'?t.valor:-t.valor;return{x:t.data,y:saldo};});
+  const labels=pontos.map(p=>p.x?.slice(5)); // MM-DD
+  const values=pontos.map(p=>p.y);
+  if(empty)empty.style.display='none'; el.style.display='block';
+  if(window._tendenciaChart) window._tendenciaChart.destroy();
+  const positivo=values[values.length-1]>=0;
+  window._tendenciaChart=new Chart(el,{type:'line',
+    data:{labels,datasets:[{label:'Saldo',data:values,borderColor:positivo?'rgba(34,197,94,.9)':'rgba(239,68,68,.9)',backgroundColor:positivo?'rgba(34,197,94,.08)':'rgba(239,68,68,.08)',fill:true,tension:0.3,pointRadius:0,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Saldo: ${fmtBRL(ctx.raw)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#8fa8c4',font:{size:9},maxTicksLimit:8}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',callback:v=>fmtBRL(v)}}}}
+  });
+}
+
 function renderFinOverview(){
   const txns=S.financial.transactions;
   const rec=txns.filter(t=>t.tipo==='receita'); const dep=txns.filter(t=>t.tipo==='despesa');
   const tr=rec.reduce((a,t)=>a+t.valor,0); const td=dep.reduce((a,t)=>a+t.valor,0);
   const saldo=tr-td; const mg=tr>0?((saldo/tr)*100):0;
+
+  // KPI cards
   $('fkReceitas').textContent=fmtBRL(tr); $('fkDespesas').textContent=fmtBRL(td);
   $('fkSaldo').textContent=fmtBRL(saldo); $('fkSaldo').className='fk-val '+(saldo>=0?'blue':'red');
   $('fkDRE').textContent=`${mg.toFixed(1)}%`; $('fkDRE').className='fk-val '+(mg>=0?'amber':'red');
   $('fkDREHint').textContent=mg>=0?`Margem ${mg.toFixed(1)}%`:'Margem negativa';
   $('fkRCount').textContent=`${rec.length} lançamento${rec.length!==1?'s':''}`;
   $('fkDCount').textContent=`${dep.length} lançamento${dep.length!==1?'s':''}`;
-  renderFluxoChart(tr,td); renderCompoChart(dep);
+
+  // Meta de receita do mês
+  const hoje=new Date(); const mesAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  const trMes=txns.filter(t=>t.tipo==='receita'&&t.data?.startsWith(mesAtual)).reduce((a,t)=>a+t.valor,0);
+  renderFinMeta(trMes);
+
+  // Resumo em linguagem natural
+  renderFinResumo(txns, tr, td, saldo, mg);
+
+  // Gráfico evolução mensal
+  renderEvolucaoChart(txns);
+
+  // Gráfico composição (melhorado)
+  renderCompoChart(dep);
+
+  // Gráfico tendência de saldo
+  renderTendenciaChart(txns);
+
   renderAllTx(txns);
   renderFinAlerts();
 }
@@ -2292,22 +2611,30 @@ function openDREDetail(){
   p.classList.remove('hidden');
 }
 
-function renderFluxoChart(tr,td){
-  const has=tr>0||td>0;
-  $('fceFluxo').style.display=has?'none':'flex'; $('fluxoChart').style.display=has?'block':'none';
-  if(!has)return;
-  if(fluxoChart)fluxoChart.destroy();
-  fluxoChart=new Chart($('fluxoChart'),{type:'bar',data:{labels:['Receitas','Despesas','Saldo'],datasets:[{data:[tr,td,Math.max(0,tr-td)],backgroundColor:['rgba(34,197,94,.7)','rgba(239,68,68,.7)','rgba(75,140,255,.7)'],borderRadius:7,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmtBRL(ctx.raw)}}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4'}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',callback:v=>fmtBRL(v)}}}}});
-}
+function renderFluxoChart(tr,td){ /* replaced by renderEvolucaoChart */ }
 function renderCompoChart(dep){
   const has=dep.length>0;
   $('fceCompo').style.display=has?'none':'flex'; $('compoChart').style.display=has?'block':'none';
-  if(!has)return;
+  if(!has){const leg=$('compoLegenda');if(leg)leg.innerHTML='';return;}
   const bc={};dep.forEach(d=>{const k=d.cat||'Outros';bc[k]=(bc[k]||0)+d.valor;});
   const labels=Object.keys(bc),values=Object.values(bc);
-  const colors=['rgba(239,68,68,.7)','rgba(245,158,11,.7)','rgba(168,85,247,.7)','rgba(75,140,255,.7)','rgba(6,182,212,.7)','rgba(34,197,94,.7)','rgba(156,163,175,.7)'];
+  const total=values.reduce((a,v)=>a+v,0);
+  const colors=['rgba(239,68,68,.8)','rgba(245,158,11,.8)','rgba(168,85,247,.8)','rgba(75,140,255,.8)','rgba(6,182,212,.8)','rgba(34,197,94,.8)','rgba(156,163,175,.8)'];
   if(compoChart)compoChart.destroy();
-  compoChart=new Chart($('compoChart'),{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:colors.slice(0,labels.length),borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8fa8c4',font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtBRL(ctx.raw)}`}}}}});
+  compoChart=new Chart($('compoChart'),{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:colors.slice(0,labels.length),borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtBRL(ctx.raw)} (${Math.round((ctx.raw/total)*100)}%)`}}}}});
+  // Rich legend with values
+  const leg=$('compoLegenda');
+  if(leg) leg.innerHTML=labels.map((l,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${colors[i]};flex-shrink:0"></div>
+        <span style="font-size:.8rem;color:var(--muted)">${l}</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:.8rem;color:var(--muted)">${Math.round((values[i]/total)*100)}%</span>
+        <span style="font-size:.82rem;font-weight:700;color:var(--danger)">${fmtBRL(values[i])}</span>
+      </div>
+    </div>`).join('');
 }
 function renderAllTx(txns){
   $('allTxPanel').style.display=txns.length?'block':'none'; if(!txns.length)return;
@@ -3667,6 +3994,33 @@ function renderFinAlerts(){
   const el=$('finAlertBar'); if(!el) return;
   const txns=S.financial.transactions;
   if(!txns.length){el.innerHTML='';return;}
+  const tr=txns.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
+  const td=txns.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
+  const saldo=tr-td;
+  // Days since last entry
+  const sorted=txns.slice().sort((a,b)=>new Date(b.data||'').getTime()-new Date(a.data||'').getTime());
+  const ultimoLanc=sorted[0]?.data;
+  const diasSem=ultimoLanc?Math.floor((new Date().getTime()-new Date(ultimoLanc+'T00:00:00').getTime())/(1000*60*60*24)):null;
+  // Month comparison
+  const hoje=new Date();
+  const mesAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  const mesAnt=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
+  const mesAntStr=`${mesAnt.getFullYear()}-${String(mesAnt.getMonth()+1).padStart(2,'0')}`;
+  const trMes=txns.filter(t=>t.tipo==='receita'&&t.data?.startsWith(mesAtual)).reduce((a,t)=>a+t.valor,0);
+  const trAnt=txns.filter(t=>t.tipo==='receita'&&t.data?.startsWith(mesAntStr)).reduce((a,t)=>a+t.valor,0);
+  const depMes=txns.filter(t=>t.tipo==='despesa'&&t.data?.startsWith(mesAtual)).reduce((a,t)=>a+t.valor,0);
+  const depAnt=txns.filter(t=>t.tipo==='despesa'&&t.data?.startsWith(mesAntStr)).reduce((a,t)=>a+t.valor,0);
+  const alerts=[];
+  // Smart alerts
+  if(saldo<0) alerts.push({type:'danger',msg:`⚠️ Saldo negativo de ${fmtBRL(saldo)}. Suas despesas superam as receitas — revise os gastos.`});
+  else if(diasSem>=5) alerts.push({type:'warn',msg:`📅 Você não registra lançamentos há ${diasSem} dias. Mantenha o controle atualizado para ter uma leitura precisa.`});
+  else if(depAnt>0&&depMes>depAnt*1.3) alerts.push({type:'warn',msg:`📈 Suas despesas desse mês estão ${Math.round(((depMes-depAnt)/depAnt)*100)}% acima do mês anterior. Verifique o que cresceu.`});
+  else if(trAnt>0&&trMes>trAnt*1.1) alerts.push({type:'success',msg:`🚀 Receita desse mês ${Math.round(((trMes-trAnt)/trAnt)*100)}% acima do mês anterior. Continue o ritmo!`});
+  else if(saldo>0) alerts.push({type:'success',msg:`✅ Saldo positivo de ${fmtBRL(saldo)}. Continue monitorando.`});
+  el.innerHTML=alerts.map(a=>`<div class="fin-alert ${a.type}">${a.msg}</div>`).join('');
+  return; // skip old code below
+  const txns=S.financial.transactions;
+  if(!txns.length){el.innerHTML='';return;}
   const rec=txns.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
   const dep=txns.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
   const saldo=rec-dep;
@@ -4080,7 +4434,7 @@ async function persistCalendarToSupabase(){
         // Dados completos do sistema — nada depende só do localStorage
         contentCalendar:S.contentCalendar,
         salesGoals:S.salesGoals,
-        salesLeads:S.salesLeads||[],
+        salesLeads:S.salesLeads, finMeta:S.finMeta||null||[],
         mktGoals:S.mktGoals,
         maturityRealScore:S.maturityRealScore||0,
         formData:S.formData,
@@ -4634,6 +4988,51 @@ function openStageDetail(num){
   detail.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
+
+/* ═══════════════ MOBILE MENU ═══════════════ */
+function toggleMobileMenu(){
+  const sidebar=document.querySelector('.sidebar');
+  const overlay=$('sidebarOverlay');
+  const btn=$('mobileMenuBtn');
+  const isOpen=sidebar?.classList.contains('mobile-open');
+  if(isOpen){
+    sidebar?.classList.remove('mobile-open');
+    overlay?.classList.remove('active');
+    if(btn) btn.innerHTML='☰';
+  } else {
+    sidebar?.classList.add('mobile-open');
+    overlay?.classList.add('active');
+    if(btn) btn.innerHTML='✕';
+  }
+}
+function closeMobileMenu(){
+  document.querySelector('.sidebar')?.classList.remove('mobile-open');
+  $('sidebarOverlay')?.classList.remove('active');
+  const btn=$('mobileMenuBtn');
+  if(btn) btn.innerHTML='☰';
+}
+// Close mobile menu when nav item clicked
+function setupMobileNavClose(){
+  document.querySelectorAll('.sb-btn[data-mod]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(window.innerWidth<=768) closeMobileMenu();
+    });
+  });
+}
+
+// Show/hide hamburger based on screen size
+function handleResize(){
+  const btn=$('mobileMenuBtn');
+  if(!btn) return;
+  if(window.innerWidth<=768){
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+    closeMobileMenu();
+  }
+}
+window.addEventListener('resize', handleResize);
+
 /* ═══════════════ INIT ═══════════════ */
 load();
 // Verificar sessão ativa no Supabase e restaurar login automaticamente
@@ -4690,6 +5089,8 @@ if(S.diag){ renderResultado(); renderDashboard(); renderActionTrail(); }
 // renderGoals removed from init — metas simplified to calendar-based reporting
 refreshCatLists();
 testSupa();
+setupMobileNavClose();
+handleResize();
 // Move all modals to body on init to prevent positioning issues
 // Move overlays to body (cards are nested inside overlays)
 ['calOverlay','calPopupOverlay','crmOverlay'].forEach(id=>{
