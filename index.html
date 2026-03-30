@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v35</title>
+<title>DigitalMind v36</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1701,7 +1701,7 @@ const S = {
   businessStage: null  // 1-5 detected automatically
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v35';
+const SKEY = 'dm_v36';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -1724,12 +1724,22 @@ function save(){
     salesAnswers:S.salesAnswers, financial:S.financial,
     categories:S.categories, contacts:S.contacts, products:S.products,
     evoHistory:S.evoHistory, ci:S.ci, companyId:S.companyId,
-    mktGoals:S.mktGoals, contentCalendar:S.contentCalendar, salesGoals:S.salesGoals, maturityRealScore:S.maturityRealScore||0, salesLeads:S.salesLeads, finMeta:S.finMeta||null
+    mktGoals:S.mktGoals, contentCalendar:S.contentCalendar, salesGoals:S.salesGoals, maturityRealScore:S.maturityRealScore||0, salesLeads:S.salesLeads, finMeta:S.finMeta||null, evoHistory:S.evoHistory, businessStage:S.businessStage
   }));}catch(e){}
 }
 function load(){
   try{
-    const r=localStorage.getItem(SKEY); if(!r)return; const d=JSON.parse(r);
+  try{
+    // Migrate from previous version if current key is empty
+    let r=localStorage.getItem(SKEY);
+    if(!r||r==='{}'){
+      const prevKeys=['dm_v34','dm_v33','dm_v32','dm_v31','dm_v30','dm_v25','dm_v24','dm_v23'];
+      for(const k of prevKeys){
+        const prev=localStorage.getItem(k);
+        if(prev&&prev!=='{}'){r=prev;console.log('Migrated data from',k);break;}
+      }
+    }
+    if(!r)return; const d=JSON.parse(r);
     S.formData={...S.formData,...(d.formData||{})};
     S.diag=d.diag||null; S.salesProfile=d.salesProfile||null;
     S.salesAnswers=d.salesAnswers||Array(10).fill('');
@@ -1746,6 +1756,9 @@ function load(){
     if(d.mktGoals)  S.mktGoals=d.mktGoals||{week:null,month:null};
     if(d.maturityRealScore) S.maturityRealScore=d.maturityRealScore||0;
     if(d.salesLeads) S.salesLeads=d.salesLeads||[];
+    if(d.finMeta) S.finMeta=d.finMeta;
+    if(d.evoHistory?.length) S.evoHistory=d.evoHistory;
+    if(d.businessStage) S.businessStage=d.businessStage;
     if(d.finMeta) S.finMeta=d.finMeta;
     if(d.contentCalendar) S.contentCalendar=d.contentCalendar||{};
     if(d.salesGoals) S.salesGoals=d.salesGoals||[];
@@ -2034,8 +2047,8 @@ async function hydrateFromSupabase(){
     }catch(e){console.warn('company_evo_history table not ready');}
 
     save();
-    await loadCalendarFromSupabase();
-    toast('Dados carregados do Supabase.','success');
+    await loadFromSupabase(); // Load ALL data from ai_context
+    toast('Dados carregados.','success');
   }catch(e){ console.error('hydrateFromSupabase:',e); }
 }
 
@@ -2423,6 +2436,7 @@ async function addTx(tipo){
   const data=`${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
   const tx={id:uuid(),tipo,desc,valor,cat,clienteId,fornecedorId,produtoId,data,dataISO};
   S.financial.transactions.push(tx);
+  autoSaveCalendar();
   if(cat&&!S.categories[tipo].includes(cat)){
     S.categories[tipo].push(cat);
     if(supa&&S.user) persistCategory(cat,tipo);
@@ -2457,6 +2471,7 @@ function setFinMeta(){
   const v=parseFloat($('finMetaInput')?.value||'0');
   if(!v||v<=0){toast('Informe um valor válido.','error');return;}
   S.finMeta=v;
+  autoSaveCalendar();
   if($('finMetaInput')) $('finMetaInput').value='';
   save(); renderFinOverview();
   toast(`Meta de R$${fmtBRL(v)} definida!`,'success');
@@ -2788,14 +2803,14 @@ async function addContact(){
   if(supa&&S.user){
     const supaId=await persistContact(c); c.id=supaId;
   }
-  S.contacts.push(c); save(); renderContacts(); refreshCatLists();
+  S.contacts.push(c); autoSaveCalendar(); renderContacts(); refreshCatLists();
   $('cNome').value=''; $('cContato').value='';
   toast(`${tipo==='cliente'?'Cliente':'Fornecedor'} adicionado!`,'success');
 }
 async function removeContact(id){
   S.contacts=S.contacts.filter(c=>c.id!==id);
   if(supa&&S.user) await supa.from('contacts').delete().eq('id',id);
-  save(); renderContacts(); refreshCatLists();
+  autoSaveCalendar(); renderContacts(); refreshCatLists();
 }
 function renderContacts(){
   ['cliente','fornecedor'].forEach(tipo=>{
@@ -2814,7 +2829,7 @@ async function addProduct(){
   if(supa&&S.user){
     const supaId=await persistProduct(p); p.id=supaId;
   }
-  S.products.push(p); save(); renderProducts(); refreshCatLists();
+  S.products.push(p); autoSaveCalendar(); renderProducts(); refreshCatLists();
   $('pNome').value=''; $('pPreco').value=''; $('pCat').value='';
   toast('Produto adicionado!','success');
 }
@@ -4552,59 +4567,72 @@ function renderMktMetasPanel(){
 
 
 /* ═══════════════ SUPABASE — CALENDAR & SALES GOALS ═══════════════ */
-async function persistCalendarToSupabase(){
+async function persistToSupabase(){
   if(!supa||!S.user||!S.companyId) return;
   try{
     await supa.from('company_intelligence').upsert({
       company_id:S.companyId,
       ai_context:{
-        // Dados completos do sistema — nada depende só do localStorage
         contentCalendar:S.contentCalendar,
-        salesGoals:S.salesGoals,
-        salesLeads:S.salesLeads, finMeta:S.finMeta||null||[],
-        mktGoals:S.mktGoals,
+        salesGoals:S.salesGoals||[],
+        salesLeads:S.salesLeads||[],
+        mktGoals:S.mktGoals||{},
         maturityRealScore:S.maturityRealScore||0,
+        businessStage:S.businessStage||null,
+        finMeta:S.finMeta||null,
+        evoHistory:S.evoHistory||[],
+        contacts:S.contacts||[],
+        products:S.products||[],
+        categories:S.categories||{receita:[],despesa:[]},
+        salesAnswers:S.salesAnswers||[],
         formData:S.formData,
         diag:S.diag,
         salesProfile:S.salesProfile,
         updated_at:new Date().toISOString()
       }
     },{onConflict:'company_id'});
-  }catch(e){console.error('persistCalendarToSupabase:',e);}
+  }catch(e){console.error('persistToSupabase:',e);}
 }
+const persistCalendarToSupabase=persistToSupabase;
 
-async function loadCalendarFromSupabase(){
+async function loadFromSupabase(){
   if(!supa||!S.user||!S.companyId) return;
   try{
     const{data}=await supa.from('company_intelligence')
       .select('ai_context').eq('company_id',S.companyId).single();
     if(data?.ai_context){
       const ctx=data.ai_context;
-      // Restaura tudo do Supabase — fonte de verdade
-      if(ctx.contentCalendar&&!Object.keys(S.contentCalendar||{}).length)
-        S.contentCalendar=ctx.contentCalendar;
-      if(ctx.salesGoals?.length&&!S.salesGoals?.length)
-        S.salesGoals=ctx.salesGoals;
-      if(ctx.salesLeads?.length&&!S.salesLeads?.length)
-        S.salesLeads=ctx.salesLeads;
-      if(ctx.mktGoals) S.mktGoals={...S.mktGoals,...ctx.mktGoals};
+      // Supabase is always the source of truth
+      if(ctx.contentCalendar) S.contentCalendar=ctx.contentCalendar;
+      if(ctx.salesGoals?.length) S.salesGoals=ctx.salesGoals;
+      if(ctx.salesLeads?.length) S.salesLeads=ctx.salesLeads;
+      if(ctx.mktGoals&&Object.keys(ctx.mktGoals).length) S.mktGoals=ctx.mktGoals;
       if(ctx.maturityRealScore) S.maturityRealScore=ctx.maturityRealScore;
-      // Dados críticos — restaura se não vieram do Supabase principal
-      if(ctx.formData&&!S.formData?.companyName) S.formData={...S.formData,...ctx.formData};
-      if(ctx.diag&&!S.diag) S.diag=ctx.diag;
-      if(ctx.salesProfile&&!S.salesProfile) S.salesProfile=ctx.salesProfile;
-      save(); // Sincroniza localStorage com dados do Supabase
+      if(ctx.businessStage) S.businessStage=ctx.businessStage;
+      if(ctx.finMeta) S.finMeta=ctx.finMeta;
+      if(ctx.evoHistory?.length) S.evoHistory=ctx.evoHistory;
+      if(ctx.contacts?.length) S.contacts=ctx.contacts;
+      if(ctx.products?.length) S.products=ctx.products;
+      if(ctx.categories?.receita?.length) S.categories=ctx.categories;
+      if(ctx.salesAnswers?.length) S.salesAnswers=ctx.salesAnswers;
+      if(ctx.formData?.companyName) S.formData={...S.formData,...ctx.formData};
+      if(ctx.diag) S.diag=ctx.diag;
+      if(ctx.salesProfile) S.salesProfile=ctx.salesProfile;
+      save(); // Update local cache
     }
-  }catch(e){console.error('loadCalendarFromSupabase:',e);}
+  }catch(e){console.error('loadFromSupabase:',e);}
 }
+const loadCalendarFromSupabase=loadFromSupabase;
 
-// Auto-save calendar on important events (debounced)
-let _calSaveTimer=null;
+// Debounced auto-save — triggers after every important action
+let _saveTimer=null;
 function autoSaveCalendar(){
-  save();
-  if(_calSaveTimer) clearTimeout(_calSaveTimer);
-  _calSaveTimer=setTimeout(()=>persistCalendarToSupabase(),2000); // 2s debounce
+  save(); // immediate local cache
+  if(_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(()=>persistToSupabase(),1500);
 }
+// Alias for direct calls
+const autoSave=autoSaveCalendar;
 
 /* ═══════════════ SCHEDULE SUGGESTION ═══════════════ */
 function showScheduleSuggestion(calItems){
