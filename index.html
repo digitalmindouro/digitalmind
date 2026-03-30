@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v32</title>
+<title>DigitalMind v33</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -682,6 +682,30 @@ h1 em{font-style:normal;color:var(--primary);}
 .crm-stage-btn.sel.perdido{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,.1);}
 @media(max-width:860px){.crm-board{grid-template-columns:repeat(3,1fr);}  }
 @media(max-width:640px){.crm-board{grid-template-columns:repeat(2,1fr);}  }
+
+
+/* ══ ESTÁGIOS DE NEGÓCIO ══ */
+.stages-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px;}
+@media(max-width:900px){.stages-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:600px){.stages-grid{grid-template-columns:1fr 1fr;}}
+.stage-card{padding:16px;border-radius:18px;border:2px solid var(--border);background:rgba(255,255,255,.03);cursor:pointer;transition:all .2s ease;position:relative;overflow:hidden;}
+.stage-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.2);}
+.stage-card.active-stage{border-color:var(--stage-color);background:rgba(var(--stage-rgb),.08);box-shadow:0 0 0 1px rgba(var(--stage-rgb),.2);}
+.stage-card.current-stage::after{content:'← Você está aqui';position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:.65rem;font-weight:800;color:var(--stage-color);opacity:.9;}
+.stage-num{font-size:1.8rem;font-weight:900;color:var(--stage-color);line-height:1;margin-bottom:6px;}
+.stage-name{font-size:.8rem;font-weight:800;color:var(--text);margin-bottom:4px;}
+.stage-tag{font-size:.68rem;color:var(--muted);font-weight:600;}
+.stage-detail{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:20px;display:none;animation:fadeUp .2s ease both;}
+.stage-detail.show{display:block;}
+.stage-detail h3{font-size:1rem;font-weight:800;margin-bottom:6px;}
+.stage-detail .stage-sub{font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6;}
+.stage-section{margin-bottom:16px;}
+.stage-section h4{font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px;}
+.stage-section ul{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;}
+.stage-section ul li{font-size:.84rem;color:var(--text);line-height:1.6;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:10px;border-left:3px solid var(--stage-color);}
+.stage-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:.78rem;font-weight:700;margin-bottom:14px;}
+.stage-badge.current{background:rgba(34,197,94,.12);color:var(--success);border:1px solid rgba(34,197,94,.25);}
+.stage-badge.other{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);}
 
 </style>
 </head>
@@ -1371,8 +1395,22 @@ h1 em{font-style:normal;color:var(--primary);}
         <div class="mod-header">
           <div class="mod-tag evo">Evolução</div>
           <h2>Maturidade e avanço da empresa</h2>
-          <p>Acompanhe o score de maturidade por período. Selecione o intervalo para filtrar os dados.</p>
+          <p>Acompanhe sua evolução e entenda em qual estágio seu negócio está. Clique em um estágio para aprender o que fazer em cada fase.</p>
         </div>
+
+        <!-- ESTÁGIOS DE NEGÓCIO -->
+        <div id="stagesSection">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+            <h3 style="font-size:.95rem;font-weight:800">📊 Os 5 Estágios do Negócio</h3>
+            <div id="currentStageBadge"></div>
+          </div>
+          <div class="stages-grid" id="stagesGrid"></div>
+          <div class="stage-detail" id="stageDetail"></div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- SCORE E HISTÓRICO -->
         <div class="evo-period-row">
           <label>Período:</label>
           <select id="evoPeriodStart" onchange="renderEvo()"></select>
@@ -1392,17 +1430,11 @@ h1 em{font-style:normal;color:var(--primary);}
           <div>
             <div class="card" style="margin-bottom:16px">
               <h3 style="margin-bottom:11px;font-size:.95rem">Linha do tempo</h3>
-              <div id="evoTableWrap"><div class="empty-state"><p>Nenhum dado registrado ainda para o período selecionado.</p></div></div>
-            </div>
-            <div class="goals-grid">
-              <div class="goal-card"><h4>🎯 Meta 1</h4><p>Organizar processo comercial e parar de perder leads.</p></div>
-              <div class="goal-card"><h4>🎯 Meta 2</h4><p>Definir posicionamento com mais percepção de valor.</p></div>
-              <div class="goal-card"><h4>🎯 Meta 3</h4><p>Base financeira mínima para decisões mais inteligentes.</p></div>
+              <div id="evoTableWrap"><div class="empty-state"><p>Nenhum dado registrado ainda.</p></div></div>
             </div>
           </div>
         </div>
       </div>
-    </div>
   </div>
 </section>
 </main>
@@ -1452,10 +1484,11 @@ const S = {
   salesGoals: [],
   maturityRealScore: 0,
   salesLeads: [],  // CRM leads
-  _lastAgentAcoes: null
+  _lastAgentAcoes: null,
+  businessStage: null  // 1-5 detected automatically
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v32';
+const SKEY = 'dm_v33';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -2450,6 +2483,7 @@ function renderActiveModule(){
   const ab=document.querySelector(`.sb-btn[data-mod="${S.activeMod}"]`); if(ab) ab.classList.add('active');
   if(S.activeMod==='financeiro'){renderFinOverview();renderFinAlerts();refreshCatLists();}
   if(S.activeMod==='vendas'){renderSalesGoals();renderCrmBoard();}
+  if(S.activeMod==='evolucao'){renderStages();renderEvo();}
   if(S.activeMod==='evolucao') renderEvo();
   if(S.activeMod==='marketing'){renderMktProgressCards();renderCalendar();}
 }
@@ -3224,6 +3258,7 @@ function buildAgentContext(){
 
   return{
     empresa:{
+      company_id:S.companyId||null,
       nome:S.formData.companyName||matrix?.empresa?.nome||'não informado',
       segmento:S.formData.segment||matrix?.empresa?.segmento||'não informado',
       cidade:S.formData.city||matrix?.empresa?.cidade||'não informada',
@@ -3274,7 +3309,16 @@ function buildAgentContext(){
       clientes:S.contacts.filter(ct=>ct.tipo==='cliente').length,
       produtos:S.products.length,
       leads_crm:(S.salesLeads||[]).length,
-      leads_fechados:(S.salesLeads||[]).filter(l=>l.stage==='fechado').length
+      leads_fechados:(S.salesLeads||[]).filter(l=>l.stage==='fechado').length,
+      leads_parados:(S.salesLeads||[]).filter(l=>{
+        if(!l.lastContact||l.stage==='fechado'||l.stage==='perdido') return false;
+        return (new Date()-new Date(l.lastContact+'T00:00:00'))/(1000*60*60*24)>14;
+      }).length
+    },
+    estagio:{
+      nivel:S.businessStage||detectBusinessStage(),
+      nome:['','Sobrevivência','Tração','Sistematização','Escala','Maturidade'][S.businessStage||detectBusinessStage()],
+      score_maturidade:S.maturityRealScore||calcMaturityScore()
     }
   };
 }
@@ -3648,6 +3692,7 @@ function recalcMaturity(){
   [$('evoScore'),$('evolutionScore')].forEach(el=>{if(el) el.textContent=`${score}%`;});
   // Push to evo history
   pushEvoHistory(score);
+  if($('stagesGrid')) renderStages();
   save();
 }
 
@@ -4331,6 +4376,240 @@ function renderSalesState(){
   if($('sActions')) $('sActions').innerHTML=(S.salesProfile.actions||[]).map(i=>`<li>${i}</li>`).join('');
   if($('vdSummaryText')) $('vdSummaryText').textContent=`${(S.salesProfile.weaknesses||[]).length} travas · ${(S.salesProfile.actions||[]).length} ações identificadas`;
   renderSalesGoals();
+}
+
+
+/* ═══════════════ ESTÁGIOS DE NEGÓCIO ═══════════════ */
+const BUSINESS_STAGES = [
+  {
+    num: 1,
+    name: 'Sobrevivência',
+    tag: 'Estabilização',
+    color: '#ef4444',
+    rgb: '239,68,68',
+    icon: '🔴',
+    resumo: 'O negócio depende 100% do dono. Quando ele para, tudo para. O objetivo aqui não é crescer — é criar previsibilidade mínima.',
+    sinais: [
+      'Você é o negócio — sem você, nada acontece',
+      'Clientes vêm só por indicação passiva, sem ação sua',
+      'Meses bons e ruins sem padrão claro',
+      'Sem registro financeiro consistente',
+      'Nenhum processo documentado'
+    ],
+    orientacao: [
+      'Defina uma oferta clara que qualquer pessoa entende em 10 segundos',
+      'Crie um processo básico de resposta a quem demonstra interesse',
+      'Comece a registrar toda entrada e saída — sem isso você não sabe se está ganhando',
+      'Identifique seus 3 melhores clientes e entenda por que compraram'
+    ],
+    contratar: 'Ainda não. Antes de contratar, você precisa saber exatamente o que essa pessoa vai fazer, como vai ser treinada, e se a margem líquida — não o faturamento — sustenta o custo por pelo menos 6 meses. Se não consegue responder isso, não está pronto.',
+    saidaEstagio: 'Três meses seguidos com margem líquida positiva e previsível. Pelo menos uma fonte de cliente além de indicação passiva.',
+    ref: 'Drucker: "Você não pode gerir o que não pode medir."'
+  },
+  {
+    num: 2,
+    name: 'Tração',
+    tag: 'Posicionamento',
+    color: '#f59e0b',
+    rgb: '245,158,11',
+    icon: '🟡',
+    resumo: 'O negócio tem demanda provada. Mas ainda opera no improviso — sem clareza de quem é o cliente ideal e sem processo repetível.',
+    sinais: [
+      'Clientes recorrentes começam a aparecer',
+      'Você ainda executa tudo, mas com alguma consistência',
+      'Começa a ter um processo de venda — mesmo que informal',
+      'Sente que está crescendo mas não sabe exatamente por quê'
+    ],
+    orientacao: [
+      'Defina para quem você vende, qual problema resolve e qual resultado entrega — isso é posicionamento',
+      'Documente seu processo de venda mesmo que seja simples',
+      'Identifique onde os leads estão travando usando o CRM',
+      'Crie pelo menos um canal ativo de geração de clientes além de indicação'
+    ],
+    contratar: 'A pergunta certa não é "posso contratar?" — é "o que essa pessoa vai fazer que me libera para gerar mais receita do que ela custa?". Se não consegue responder, ainda não. Se consegue, verifique se a margem líquida sustenta o custo por 6 meses. Se a conta fecha, pode contratar.',
+    saidaEstagio: 'Processo de venda documentado e seguido. Taxa de conversão conhecida. Pelo menos um canal gerando leads ativamente.',
+    ref: 'Kotler: posicionamento antes de amplificação.'
+  },
+  {
+    num: 3,
+    name: 'Sistematização',
+    tag: 'Delegação',
+    color: '#3b82f6',
+    rgb: '59,130,246',
+    icon: '🔵',
+    resumo: 'O estágio mais crítico. O dono criou um emprego para si mesmo. Quanto mais cresce, mais sente que afunda. O gargalo é você.',
+    sinais: [
+      'Está perdendo oportunidades por falta de tempo, não de cliente',
+      'Leads acumulando no CRM sem avançar',
+      'Conteúdo planejado mas não executado por falta de tempo',
+      'Metas não batidas por sobrecarga, não por falta de demanda',
+      'Você responde a tudo: vendas, operação, financeiro e marketing'
+    ],
+    orientacao: [
+      'Identifique qual função, se delegada, te libera para o que só você pode fazer',
+      'Documente esse processo antes de contratar — contratar sem processo cria dois problemas',
+      'Crie ciclos de revisão semanal: olhar os números certos na frequência certa',
+      'Pare de fazer o que pode ser feito por alguém seguindo um processo'
+    ],
+    contratar: 'Aqui a resposta muda. Se os dados mostram leads morrendo por demora, conteúdo não produzido por falta de tempo, ou operação travando o comercial — o gargalo é capacidade. O sistema calcula: custo total da vaga versus margem líquida atual versus tempo de maturação. Se a margem sustenta e o gargalo é real, contrate — mas com processo documentado antes.',
+    saidaEstagio: 'Pelo menos uma função delegada com processo funcionando. Dono tem tempo para pensar estratégia pelo menos 20% da semana.',
+    ref: 'Jim Collins: as pessoas certas antes das decisões certas.'
+  },
+  {
+    num: 4,
+    name: 'Escala',
+    tag: 'Crescimento',
+    color: '#8b5cf6',
+    rgb: '139,92,246',
+    icon: '🟣',
+    resumo: 'O negócio funciona sem o dono presente o tempo todo. A base está criada. O risco agora é escalar antes de ter estrutura.',
+    sinais: [
+      'Time pequeno funcionando com processos básicos',
+      'Você não está mais em todas as funções',
+      'Margem líquida estável com crescimento consistente',
+      'Começa a pensar em novos canais ou mercados'
+    ],
+    orientacao: [
+      'Crie dashboards por área — não só financeiro',
+      'Defina metas por função com acompanhamento regular',
+      'Aprofunde no canal de melhor retorno antes de abrir outro',
+      'Invista em ativos: marca, processo, cultura'
+    ],
+    contratar: 'Aqui a contratação é estratégica — não para cobrir gargalo operacional, mas para construir capacidade futura. A pergunta é: que habilidade falta no time para onde o negócio quer estar em 3 anos? O sistema verifica se os processos estão suficientemente documentados para absorver alguém novo e se a margem sustenta.',
+    saidaEstagio: 'Crescimento sustentado por 6 meses. Time com funções claras e métricas individuais. Faturamento previsível.',
+    ref: 'Drucker: gerir pelo passado é não gerir. Kotler: amplificar o que funciona.'
+  },
+  {
+    num: 5,
+    name: 'Maturidade',
+    tag: 'Estratégia',
+    color: '#22c55e',
+    rgb: '34,197,94',
+    icon: '🟢',
+    resumo: 'O dono está acima do negócio, não dentro dele. Os problemas agora são de estratégia, cultura e visão de longo prazo.',
+    sinais: [
+      'Negócio opera com processos estabelecidos e time estruturado',
+      'Você atua na estratégia, não na operação',
+      'Decisões são tomadas com base em dados, não intuição',
+      'Pensa em legado, novos mercados ou multiplicação do modelo'
+    ],
+    orientacao: [
+      'Fortaleça sua vantagem competitiva — o que é difícil de copiar no que você faz',
+      'Invista em construção de marca e cultura como ativos intangíveis',
+      'Expanda com método — não abra frentes novas antes de consolidar o que funciona',
+      'Crie sistema de sucessão para funções-chave'
+    ],
+    contratar: 'Aqui é expansão com visão de longo prazo. A pergunta é: que habilidade falta no time para onde o negócio quer estar em 3 anos? Não é urgência — é construção de capacidade futura.',
+    saidaEstagio: 'Esse é o estágio final. O próximo passo é multiplicação do modelo ou novos mercados.',
+    ref: 'Porter: vantagem competitiva sustentável.'
+  }
+];
+
+let activeStageCard = null;
+
+function detectBusinessStage(){
+  const txns = S.financial?.transactions || [];
+  const rec = txns.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
+  const dep = txns.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
+  const margem = rec > 0 ? ((rec-dep)/rec)*100 : 0;
+  const leads = S.salesLeads || [];
+  const score = S.maturityRealScore || calcMaturityScore();
+  const temProcesso = Boolean(S.salesProfile);
+  const temCRM = leads.length > 0;
+  const leadsPerdidos = leads.filter(l=>l.stage==='perdido').length;
+  const leadsFechados = leads.filter(l=>l.stage==='fechado').length;
+  const temFinanceiro = txns.length >= 3;
+  const calendar = S.contentCalendar || {};
+  const totalConteudos = Object.values(calendar).flat().length;
+
+  // Lógica de estágio baseada em capacidade real, não faturamento
+  if(score < 25 || !temProcesso && !temFinanceiro){
+    return 1; // Sobrevivência
+  }
+  if(score < 45 || !temCRM || !temFinanceiro){
+    return 2; // Tração
+  }
+  if(score < 65 || (temCRM && leads.filter(l=>l.stage==='novo'||l.stage==='conversa').length > leads.filter(l=>l.stage==='fechado').length * 2)){
+    return 3; // Sistematização
+  }
+  if(score < 80 || totalConteudos < 10){
+    return 4; // Escala
+  }
+  return 5; // Maturidade
+}
+
+function renderStages(){
+  const grid = $('stagesGrid'); if(!grid) return;
+  const currentStage = detectBusinessStage();
+  S.businessStage = currentStage;
+
+  // Update badge
+  const badge = $('currentStageBadge');
+  if(badge){
+    const st = BUSINESS_STAGES[currentStage-1];
+    badge.innerHTML = `<div class="stage-badge current">${st.icon} Estágio ${currentStage}: ${st.name}</div>`;
+  }
+
+  grid.innerHTML = BUSINESS_STAGES.map(st => `
+    <div class="stage-card ${st.num === currentStage ? 'active-stage current-stage' : ''}"
+      style="--stage-color:${st.color};--stage-rgb:${st.rgb}"
+      onclick="openStageDetail(${st.num})">
+      <div class="stage-num" style="color:${st.color}">${st.num}</div>
+      <div class="stage-name">${st.name}</div>
+      <div class="stage-tag">${st.tag}</div>
+      ${st.num === currentStage ? '<div style="height:18px"></div>' : ''}
+    </div>
+  `).join('');
+}
+
+function openStageDetail(num){
+  const detail = $('stageDetail');
+  if(!detail) return;
+  const st = BUSINESS_STAGES[num-1];
+  const currentStage = S.businessStage || detectBusinessStage();
+  const isCurrent = num === currentStage;
+
+  if(activeStageCard === num){
+    detail.classList.remove('show');
+    activeStageCard = null;
+    document.querySelectorAll('.stage-card').forEach(c=>c.classList.remove('active-stage'));
+    if(isCurrent) document.querySelectorAll('.stage-card')[num-1]?.classList.add('active-stage');
+    return;
+  }
+
+  activeStageCard = num;
+  document.querySelectorAll('.stage-card').forEach((c,i)=>{
+    c.classList.toggle('active-stage', i === num-1 || i === currentStage-1);
+  });
+  detail.style.setProperty('--stage-color', st.color);
+  detail.style.setProperty('--stage-rgb', st.rgb);
+  detail.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <h3 style="color:${st.color}">${st.icon} Estágio ${st.num} — ${st.name}</h3>
+      ${isCurrent ? '<span class="stage-badge current">← Você está aqui</span>' : ''}
+    </div>
+    <p class="stage-sub">${st.resumo}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="stage-section">
+        <h4>Sinais desse estágio</h4>
+        <ul>${st.sinais.map(s=>`<li>${s}</li>`).join('')}</ul>
+      </div>
+      <div class="stage-section">
+        <h4>O que fazer nessa fase</h4>
+        <ul>${st.orientacao.map(o=>`<li>${o}</li>`).join('')}</ul>
+      </div>
+    </div>
+    <div class="stage-section" style="margin-top:14px">
+      <h4>💼 Sobre contratar</h4>
+      <ul><li>${st.contratar}</li></ul>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <p style="font-size:.78rem;color:var(--muted);font-style:italic">${st.ref}</p>
+      <p style="font-size:.76rem;color:var(--muted)"><strong>Sinal de saída:</strong> ${st.saidaEstagio}</p>
+    </div>
+  `;
+  detail.classList.add('show');
+  detail.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 /* ═══════════════ INIT ═══════════════ */
