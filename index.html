@@ -2516,7 +2516,7 @@ async function mktReply(p){
   if(supa&&S.user){
     const badge=$('mktAiBadge');
     if(badge) badge.textContent='⟳ DM IA...';
-    const resp=await callAgentGemini(p);
+    const resp=await callAgentGemini(p,'marketing');
     if(resp){
       if(badge){badge.textContent='● DM IA';badge.className='ai-badge live';}
       return resp;
@@ -2597,7 +2597,7 @@ async function mktReply(p){
 }
 async function salesReply(p){
   if(supa&&S.user){
-    const resp=await callAgentGemini(p);
+    const resp=await callAgentGemini(p,'vendas');
     if(resp) return resp;
   }
 
@@ -3044,10 +3044,32 @@ async function sendChat(inputId,chatId,replyFn){
   dot.remove();
   const text=reply||'Desculpe, não consegui processar sua pergunta.';
   addMsg($(chatId),text,'ai');
-  // Show "use in panel" hint if agent detected schedulable content
   if(S._lastAgentAcoes?.calendario?.length&&chatId==='mktChat'){
     showScheduleSuggestion(S._lastAgentAcoes.calendario);
   }
+  // Caminho B: save memory after every 3 exchanges
+  const msgs=$(chatId)?.querySelectorAll('.msg');
+  if(msgs&&msgs.length>0&&msgs.length%6===0){
+    const modulo=chatId==='mktChat'?'marketing':chatId==='salesChat'?'vendas':'geral';
+    saveConversationMemory(chatId, modulo);
+  }
+}
+
+async function saveConversationMemory(chatId, modulo){
+  if(!supa||!S.user||!S.companyId) return;
+  try{
+    // Extract last 10 messages for insight extraction
+    const msgs=Array.from($(chatId)?.querySelectorAll('.msg')||[]).slice(-10);
+    const history=msgs.map(el=>(el.classList.contains('user')?'Cliente: ':'Agente: ')+el.textContent?.trim()?.slice(0,200)).join('\n');
+    if(history.length<50) return;
+    const ctx=buildAgentContext();
+    await fetch(`${SUPABASE_URL}/functions/v1/agente-cliente`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${S.user.access_token||SUPABASE_ANON_KEY}`},
+      body:JSON.stringify({action:'save_memory',conversation_history:history,modulo,context:ctx,prompt:'save'})
+    });
+    console.log('Memory saved for',modulo);
+  }catch(e){console.error('saveConversationMemory:',e);}
 }
 function setupChat(inputId,chatId,sendId,replyFn){
   $(sendId).addEventListener('click',()=>sendChat(inputId,chatId,replyFn));
@@ -3322,7 +3344,7 @@ function buildAgentContext(){
     }
   };
 }
-async function callAgentGemini(prompt){
+async function callAgentGemini(prompt, modulo='geral'){
   try{
     const controller=new AbortController();
     const timeoutId=setTimeout(()=>controller.abort(),25000); // 25s timeout
@@ -3330,7 +3352,7 @@ async function callAgentGemini(prompt){
       signal:controller.signal,
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY},
-      body:JSON.stringify({prompt,context:buildAgentContext()})
+      body:JSON.stringify({prompt,context:buildAgentContext(),modulo})
     });
     clearTimeout(timeoutId);
     if(!res.ok){console.error('Edge fn error:',res.status);return null;}
