@@ -1729,7 +1729,6 @@ function save(){
 }
 function load(){
   try{
-  try{
     // Migrate from previous version if current key is empty
     let r=localStorage.getItem(SKEY);
     if(!r||r==='{}'){
