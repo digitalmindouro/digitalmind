@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v34</title>
+<title>DigitalMind v35</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1411,6 +1411,16 @@ body{overflow-x:hidden!important;}
           <div class="fin-sub-panel hidden" id="drePanel">
             <h3>📊 DRE — Demonstrativo de Resultado</h3>
             <div id="dreContent"></div>
+            <div id="dreCharts" style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div>
+                <h4 style="font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Receita × Despesa × Lucro</h4>
+                <div style="height:160px"><canvas id="dreBarChart"></canvas></div>
+              </div>
+              <div>
+                <h4 style="font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Margem por mês</h4>
+                <div style="height:160px"><canvas id="dreMargemChart"></canvas></div>
+              </div>
+            </div>
           </div>
           <!-- META DE RECEITA -->
           <div class="fchart-card" style="margin-bottom:14px">
@@ -1433,9 +1443,19 @@ body{overflow-x:hidden!important;}
           <!-- EVOLUÇÃO MENSAL -->
           <div class="fin-charts-row">
             <div class="fchart-card">
-              <h3>📈 Evolução mensal — Receita vs Despesa</h3>
-              <p style="font-size:.76rem;color:var(--muted);margin-bottom:10px">Comparativo dos últimos meses — veja se está crescendo ou estagnando</p>
-              <div class="chart-wrap"><div class="chart-empty" id="fceEvolucao"><div class="ci">📈</div><p>Adicione lançamentos em meses diferentes para ver a evolução</p></div><canvas id="evolucaoChart" style="display:none"></canvas></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                <h3>📈 Evolução mensal</h3>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <label style="font-size:.72rem;color:var(--muted)">Meses:</label>
+                  <select id="evolucaoMeses" onchange="renderEvolucaoChart(S.financial.transactions)" style="padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);font-size:.76rem;font-family:inherit;outline:none;">
+                    <option value="3">Últimos 3</option>
+                    <option value="6" selected>Últimos 6</option>
+                    <option value="12">Últimos 12</option>
+                  </select>
+                </div>
+              </div>
+              <p style="font-size:.74rem;color:var(--muted);margin-bottom:10px">Receita vs Despesa por período — veja se está crescendo ou estagnando</p>
+              <div class="chart-wrap"><div class="chart-empty" id="fceEvolucao" style="display:none"><div class="ci">📈</div><p>Adicione lançamentos em meses diferentes para ver a evolução</p></div><canvas id="evolucaoChart"></canvas></div>
             </div>
             <div class="fchart-card">
               <h3>🍩 Composição das despesas</h3>
@@ -1445,11 +1465,23 @@ body{overflow-x:hidden!important;}
             </div>
           </div>
 
-          <!-- TENDÊNCIA DE SALDO (linha) -->
+          <!-- PROJEÇÃO FINANCEIRA -->
           <div class="fchart-card" style="margin-bottom:14px">
-            <h3>💹 Tendência de saldo</h3>
-            <p style="font-size:.76rem;color:var(--muted);margin-bottom:10px">Seu caixa está crescendo ou caindo? Cada ponto é o saldo acumulado no dia</p>
-            <div class="chart-wrap" style="height:140px"><div class="chart-empty" id="fceTendencia"><div class="ci">💹</div><p>Adicione lançamentos para ver a tendência</p></div><canvas id="tendenciaChart" style="display:none"></canvas></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px">
+              <div>
+                <h3>🔮 Projeção financeira</h3>
+                <p style="font-size:.76rem;color:var(--muted);margin-top:2px">Com base no histórico — o que esperar se o ritmo continuar</p>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <label style="font-size:.74rem;color:var(--muted)">Meses:</label>
+                <select id="projecaoMeses" onchange="renderProjecao()" style="padding:6px 10px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);font-size:.8rem;font-family:inherit;outline:none;">
+                  <option value="1">Próximo mês</option>
+                  <option value="3" selected>Próximos 3 meses</option>
+                  <option value="6">Próximos 6 meses</option>
+                </select>
+              </div>
+            </div>
+            <div id="projecaoContent"></div>
           </div>
 
           <!-- TRANSAÇÕES -->
@@ -1669,7 +1701,7 @@ const S = {
   businessStage: null  // 1-5 detected automatically
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v34';
+const SKEY = 'dm_v35';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -2498,6 +2530,8 @@ function renderFinResumo(txns, tr, td, saldo, mg){
 
 function renderEvolucaoChart(txns){
   const el=$('evolucaoChart'); const empty=$('fceEvolucao'); if(!el) return;
+  const nMeses=parseInt($('evolucaoMeses')?.value||'6');
+  const MESES_ABREV=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   // Group by month
   const porMes={};
   txns.forEach(t=>{
@@ -2506,37 +2540,89 @@ function renderEvolucaoChart(txns){
     if(t.tipo==='receita') porMes[m].rec+=t.valor;
     else porMes[m].dep+=t.valor;
   });
-  const meses=Object.keys(porMes).sort().slice(-6);
-  if(meses.length<2){if(empty)empty.style.display='flex';el.style.display='none';return;}
-  if(empty)empty.style.display='none'; el.style.display='block';
+  // Always include current month even if empty
+  const hoje=new Date();
+  const meAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  if(!porMes[meAtual]) porMes[meAtual]={rec:0,dep:0};
+  // Build last N months including current
+  const allMeses=[];
+  for(let i=nMeses-1;i>=0;i--){
+    const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);
+    allMeses.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  const labels=allMeses.map(m=>{const [y,mo]=m.split('-');return MESES_ABREV[parseInt(mo)-1]+'/'+y.slice(2);});
+  const recData=allMeses.map(m=>porMes[m]?.rec||0);
+  const depData=allMeses.map(m=>porMes[m]?.dep||0);
+  if(empty) empty.style.display='none';
+  el.style.display='block';
   if(window._evolucaoChart) window._evolucaoChart.destroy();
-  const MESES_ABREV=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const labels=meses.map(m=>{const [y,mo]=m.split('-');return MESES_ABREV[parseInt(mo)-1]+'/'+y.slice(2);});
   window._evolucaoChart=new Chart(el,{type:'bar',
     data:{labels,datasets:[
-      {label:'Receita',data:meses.map(m=>porMes[m].rec),backgroundColor:'rgba(34,197,94,.65)',borderRadius:6,borderWidth:0},
-      {label:'Despesa',data:meses.map(m=>porMes[m].dep),backgroundColor:'rgba(239,68,68,.65)',borderRadius:6,borderWidth:0}
+      {label:'Receita',data:recData,backgroundColor:allMeses.map(m=>m===meAtual?'rgba(34,197,94,.4)':'rgba(34,197,94,.7)'),borderRadius:6,borderWidth:0},
+      {label:'Despesa',data:depData,backgroundColor:allMeses.map(m=>m===meAtual?'rgba(239,68,68,.4)':'rgba(239,68,68,.7)'),borderRadius:6,borderWidth:0}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8fa8c4',font:{size:11}}},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtBRL(ctx.raw)}`}}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',callback:v=>fmtBRL(v)}}}}
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#8fa8c4',font:{size:11}}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtBRL(ctx.raw)}`}},
+        annotation:{annotations:{mesAtual:{type:'box',xMin:labels.length-1-0.4,xMax:labels.length-1+0.4,backgroundColor:'rgba(255,255,255,.03)',borderColor:'rgba(255,255,255,.1)',borderWidth:1,label:{display:true,content:'Mês atual',color:'#8fa8c4',font:{size:9}}}}}
+      },
+      scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8fa8c4',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',callback:v=>fmtBRL(v)}}}
+    }
   });
 }
 
-function renderTendenciaChart(txns){
-  const el=$('tendenciaChart'); const empty=$('fceTendencia'); if(!el) return;
-  const sorted=txns.slice().sort((a,b)=>new Date(a.data||'').getTime()-new Date(b.data||'').getTime());
-  if(sorted.length<2){if(empty)empty.style.display='flex';el.style.display='none';return;}
-  // Calculate running balance
-  let saldo=0;
-  const pontos=sorted.map(t=>{saldo+=t.tipo==='receita'?t.valor:-t.valor;return{x:t.data,y:saldo};});
-  const labels=pontos.map(p=>p.x?.slice(5)); // MM-DD
-  const values=pontos.map(p=>p.y);
-  if(empty)empty.style.display='none'; el.style.display='block';
-  if(window._tendenciaChart) window._tendenciaChart.destroy();
-  const positivo=values[values.length-1]>=0;
-  window._tendenciaChart=new Chart(el,{type:'line',
-    data:{labels,datasets:[{label:'Saldo',data:values,borderColor:positivo?'rgba(34,197,94,.9)':'rgba(239,68,68,.9)',backgroundColor:positivo?'rgba(34,197,94,.08)':'rgba(239,68,68,.08)',fill:true,tension:0.3,pointRadius:0,borderWidth:2}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Saldo: ${fmtBRL(ctx.raw)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#8fa8c4',font:{size:9},maxTicksLimit:8}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',callback:v=>fmtBRL(v)}}}}
+function renderProjecao(){
+  const el=$('projecaoContent'); if(!el) return;
+  const txns=S.financial.transactions;
+  if(!txns.length){
+    el.innerHTML=`<p style="font-size:.84rem;color:var(--muted);text-align:center;padding:20px">Adicione lançamentos para gerar a projeção financeira.</p>`;
+    return;
+  }
+  const mesesProjetar=parseInt($('projecaoMeses')?.value||'3');
+  // Build monthly data from history
+  const porMes={};
+  txns.forEach(t=>{
+    const m=t.data?.slice(0,7); if(!m) return;
+    if(!porMes[m]) porMes[m]={rec:0,dep:0};
+    if(t.tipo==='receita') porMes[m].rec+=t.valor;
+    else porMes[m].dep+=t.valor;
   });
+  const mesesHist=Object.keys(porMes).sort();
+  if(!mesesHist.length){el.innerHTML='';return;}
+  // Calculate averages from last 3 months of history
+  const ultimos3=mesesHist.slice(-3);
+  const mediaRec=ultimos3.reduce((a,m)=>a+(porMes[m]?.rec||0),0)/ultimos3.length;
+  const mediaDep=ultimos3.reduce((a,m)=>a+(porMes[m]?.dep||0),0)/ultimos3.length;
+  const mediaSaldo=mediaRec-mediaDep;
+  const tendenciaRec=mesesHist.length>=2?(porMes[mesesHist[mesesHist.length-1]].rec-porMes[mesesHist[0]].rec)/mesesHist.length:0;
+  // Project future months
+  const hoje=new Date();
+  const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const projecoes=[];
+  for(let i=1;i<=mesesProjetar;i++){
+    const d=new Date(hoje.getFullYear(),hoje.getMonth()+i,1);
+    const recProj=Math.max(0,mediaRec+(tendenciaRec*i*0.5));
+    const depProj=mediaDep*(1+i*0.02); // slight inflation
+    projecoes.push({mes:`${MESES[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`,rec:recProj,dep:depProj,saldo:recProj-depProj});
+  }
+  // Render projection cards
+  const saldoTotal=projecoes.reduce((a,p)=>a+p.saldo,0);
+  const tendMsg=mediaSaldo>0?`Se o ritmo atual continuar, você deve ter um resultado <strong style="color:var(--success)">positivo</strong> nos próximos ${mesesProjetar} meses.`:`Atenção: no ritmo atual, o resultado dos próximos ${mesesProjetar} meses pode ser <strong style="color:var(--danger)">negativo</strong>. Revise as despesas.`;
+  el.innerHTML=`
+    <div style="padding:12px 14px;border-radius:12px;background:rgba(75,140,255,.06);border:1px solid rgba(75,140,255,.12);margin-bottom:14px;font-size:.84rem;line-height:1.7">
+      ${tendMsg} Projeção de saldo acumulado: <strong style="color:${saldoTotal>=0?'var(--success)':'var(--danger)'}">${fmtBRL(saldoTotal)}</strong>.
+      <br><span style="font-size:.74rem;color:var(--muted)">Baseado na média dos últimos ${ultimos3.length} meses com histórico.</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(${Math.min(mesesProjetar,3)},1fr);gap:10px">
+      ${projecoes.map(p=>`
+        <div style="padding:14px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid ${p.saldo>=0?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'}">
+          <p style="font-size:.75rem;font-weight:800;color:var(--muted);margin-bottom:8px">${p.mes}</p>
+          <div style="display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-bottom:4px"><span>Receita</span><span style="color:var(--success)">${fmtBRL(p.rec)}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-bottom:8px"><span>Despesa</span><span style="color:var(--danger)">${fmtBRL(p.dep)}</span></div>
+          <div style="border-top:1px solid var(--border);padding-top:6px;display:flex;justify-content:space-between;font-size:.84rem;font-weight:700"><span>Saldo</span><span style="color:${p.saldo>=0?'var(--success)':'var(--danger)'}">${fmtBRL(p.saldo)}</span></div>
+        </div>`).join('')}
+    </div>`;
 }
 
 function renderFinOverview(){
@@ -2568,7 +2654,7 @@ function renderFinOverview(){
   renderCompoChart(dep);
 
   // Gráfico tendência de saldo
-  renderTendenciaChart(txns);
+  renderProjecao();
 
   renderAllTx(txns);
   renderFinAlerts();
@@ -2609,6 +2695,56 @@ function openDREDetail(){
     <div class="dre-line total ${saldo>=0?'pos':'neg'}"><span>Resultado Líquido</span><span>${fmtBRL(saldo)}</span></div>
     <div class="dre-line"><span style="color:var(--muted)">Margem líquida</span><span class="${mg>=0?'pos':'neg'}">${mg.toFixed(1)}%</span></div>`;
   p.classList.remove('hidden');
+  // Render DRE-specific charts
+  renderDRECharts(txns, tr, td, saldo, mg);
+}
+
+function renderDRECharts(txns, tr, td, saldo, mg){
+  // Chart 1 — Receita × Despesa × Lucro (horizontal bar)
+  const dreBar=$('dreBarChart');
+  if(dreBar){
+    if(window._dreBarChart) window._dreBarChart.destroy();
+    window._dreBarChart=new Chart(dreBar,{type:'bar',
+      data:{
+        labels:['Receita Bruta','Despesas','Resultado Líquido'],
+        datasets:[{data:[tr,td,Math.abs(saldo)],backgroundColor:[
+          'rgba(34,197,94,.75)','rgba(239,68,68,.75)',saldo>=0?'rgba(75,140,255,.75)':'rgba(239,68,68,.4)'
+        ],borderRadius:6,borderWidth:0}]
+      },
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmtBRL(ctx.raw)}`}}},
+        scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',callback:v=>fmtBRL(v),font:{size:9}}},y:{grid:{display:false},ticks:{color:'#8fa8c4',font:{size:10}}}}
+      }
+    });
+  }
+  // Chart 2 — Margem por mês (line)
+  const dreMargem=$('dreMargemChart');
+  if(dreMargem){
+    const porMes={};
+    txns.forEach(t=>{
+      const m=t.data?.slice(0,7); if(!m) return;
+      if(!porMes[m]) porMes[m]={rec:0,dep:0};
+      if(t.tipo==='receita') porMes[m].rec+=t.valor;
+      else porMes[m].dep+=t.valor;
+    });
+    const meses=Object.keys(porMes).sort().slice(-6);
+    if(meses.length>=1){
+      const MESES_ABREV=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      const labels=meses.map(m=>{const [y,mo]=m.split('-');return MESES_ABREV[parseInt(mo)-1]+'/'+y.slice(2);});
+      const margens=meses.map(m=>{const r=porMes[m].rec; const d=porMes[m].dep; return r>0?Math.round(((r-d)/r)*100):0;});
+      if(window._dreMargemChart) window._dreMargemChart.destroy();
+      window._dreMargemChart=new Chart(dreMargem,{type:'line',
+        data:{labels,datasets:[{label:'Margem %',data:margens,borderColor:'rgba(168,85,247,.9)',backgroundColor:'rgba(168,85,247,.08)',fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:'rgba(168,85,247,.9)',borderWidth:2}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Margem: ${ctx.raw}%`}}},
+          scales:{
+            x:{grid:{display:false},ticks:{color:'#8fa8c4',font:{size:9}}},
+            y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8fa8c4',callback:v=>v+'%'},suggestedMin:0,suggestedMax:100}
+          }
+        }
+      });
+    }
+  }
 }
 
 function renderFluxoChart(tr,td){ /* replaced by renderEvolucaoChart */ }
