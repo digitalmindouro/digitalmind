@@ -4018,15 +4018,6 @@ function renderFinAlerts(){
   else if(trAnt>0&&trMes>trAnt*1.1) alerts.push({type:'success',msg:`🚀 Receita desse mês ${Math.round(((trMes-trAnt)/trAnt)*100)}% acima do mês anterior. Continue o ritmo!`});
   else if(saldo>0) alerts.push({type:'success',msg:`✅ Saldo positivo de ${fmtBRL(saldo)}. Continue monitorando.`});
   el.innerHTML=alerts.map(a=>`<div class="fin-alert ${a.type}">${a.msg}</div>`).join('');
-  return; // skip old code below
-  const txns=S.financial.transactions;
-  if(!txns.length){el.innerHTML='';return;}
-  const rec=txns.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
-  const dep=txns.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
-  const saldo=rec-dep;
-  if(saldo<0) el.innerHTML=`<div class="fin-alert danger">⚠️ <strong>Atenção:</strong> Despesas superam receitas em ${fmtBRL(Math.abs(saldo))}. Revise seus lançamentos.</div>`;
-  else if(rec>0&&dep/rec>0.8) el.innerHTML=`<div class="fin-alert warn">⚠️ Despesas representam ${Math.round(dep/rec*100)}% das receitas. Margem apertada.</div>`;
-  else el.innerHTML=`<div class="fin-alert ok">✅ Saldo positivo de ${fmtBRL(saldo)}. Continue monitorando.</div>`;
 }
 
 /* ═══════════════ ACTION TRAIL ═══════════════ */
