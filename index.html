@@ -2082,6 +2082,9 @@ async function persistCategory(nome,tipo){
 /* ═══════════════ REALTIME SYNC ═══════════════ */
 let _rtChannel = null;
 let _pollTimer = null;
+// Mutex: conta operações de escrita em andamento (addTx / removeTx)
+// syncTransactionsNow é bloqueado enquanto _txWriting > 0
+let _txWriting = 0;
 
 // Converte linha do Supabase para formato local
 function _rowToTx(row){
@@ -2112,9 +2115,15 @@ function _refreshFinUI(){
   }
 }
 
-// Busca as transações do Supabase e atualiza o estado local
+// Fingerprint de uma transação para detectar mudanças reais (id + valor + tipo + data)
+function _txHash(t){ return `${t.id}|${t.valor}|${t.tipo}|${t.dataISO||''}`; }
+function _txHashFromRow(r){ return `${r.id}|${parseFloat(r.valor)||0}|${r.tipo}|${(r.data_lancamento||'').split('T')[0]}`; }
+
+// Busca transações do Supabase e atualiza estado local
+// NUNCA executa enquanto addTx/removeTx estão em andamento (_txWriting > 0)
 async function syncTransactionsNow(){
   if(!supa || !S.user || !S.companyId) return;
+  if(_txWriting > 0) return; // mutex: escrita em andamento, aguarda
   try{
     const {data:txns, error} = await supa
       .from('financial_transactions')
@@ -2122,51 +2131,54 @@ async function syncTransactionsNow(){
       .eq('company_id', S.companyId)
       .order('data_lancamento', {ascending: false});
     if(error || !txns) return;
-    // Detecta se houve mudança real antes de re-renderizar
-    const antes = JSON.stringify(S.financial.transactions.map(t=>t.id).sort());
-    const depois = JSON.stringify(txns.map(t=>t.id).sort());
-    if(antes === depois) return; // sem mudança, não re-renderiza
+    // Verifica mutex novamente após o await (addTx pode ter iniciado durante a query)
+    if(_txWriting > 0) return;
+    // Compara fingerprints completos (id + valor + tipo + data) para detectar qualquer mudança
+    const setAntes = new Set(S.financial.transactions.map(_txHash));
+    const setDepois = new Set(txns.map(_txHashFromRow));
+    const semMudanca = setAntes.size === setDepois.size &&
+      [...setAntes].every(h => setDepois.has(h));
+    if(semMudanca) return;
     S.financial.transactions = txns.map(t => _rowToTx(t));
     _refreshFinUI();
-  }catch(e){ console.warn('[Sync] syncTransactionsNow erro:', e); }
+  }catch(e){ console.warn('[Sync] erro:', e); }
 }
 
-// Envia sinal de mudança para os outros dispositivos via Broadcast
+// Envia sinal para os outros dispositivos via Broadcast
 function broadcastTxChange(){
-  if(_rtChannel) {
-    _rtChannel.send({ type: 'broadcast', event: 'tx-change', payload: { ts: Date.now() } })
-      .catch(()=>{}); // falha silenciosa
+  if(_rtChannel){
+    _rtChannel.send({ type:'broadcast', event:'tx-change', payload:{ ts: Date.now() } })
+      .catch(()=>{});
   }
 }
 
 function startRealtimeSync(){
   if(!supa || !S.companyId || _rtChannel) return;
 
-  // Canal Broadcast — funciona sem configuração de tabela no Supabase
   _rtChannel = supa
-    .channel(`dm-company-${S.companyId}`, { config: { broadcast: { self: false } } })
-    .on('broadcast', { event: 'tx-change' }, () => {
-      // Outro dispositivo avisou que salvou — busca os dados atualizados
-      syncTransactionsNow();
+    .channel(`dm-company-${S.companyId}`, { config:{ broadcast:{ self:false } } })
+    .on('broadcast', { event:'tx-change' }, () => {
+      // Outro dispositivo salvou — aguarda 800ms para garantir que o Supabase propagou
+      setTimeout(() => syncTransactionsNow(), 800);
     })
     .subscribe(status => {
-      console.log('[Realtime] Canal broadcast status:', status, '| company:', S.companyId);
+      console.log('[Realtime] status:', status, '| company:', S.companyId);
     });
 
-  // Fallback 1: poll a cada 30s (garante sync mesmo se broadcast falhar)
+  // Poll a cada 30s como fallback
   if(_pollTimer) clearInterval(_pollTimer);
   _pollTimer = setInterval(() => syncTransactionsNow(), 30000);
 
-  // Fallback 2: sync ao voltar para a aba/app
+  // Sync ao voltar para a aba/app — com delay para não colidir com operações em andamento
   document.addEventListener('visibilitychange', _onVisibilityChange);
   window.addEventListener('focus', _onWindowFocus);
 }
 
 function _onVisibilityChange(){
-  if(!document.hidden) syncTransactionsNow();
+  if(!document.hidden) setTimeout(() => syncTransactionsNow(), 1000);
 }
 function _onWindowFocus(){
-  syncTransactionsNow();
+  setTimeout(() => syncTransactionsNow(), 1000);
 }
 
 function stopRealtimeSync(){
@@ -2174,6 +2186,7 @@ function stopRealtimeSync(){
   if(_pollTimer){ clearInterval(_pollTimer); _pollTimer = null; }
   document.removeEventListener('visibilitychange', _onVisibilityChange);
   window.removeEventListener('focus', _onWindowFocus);
+  _txWriting = 0;
 }
 
 /* ── Hidrata todos os dados do Supabase após login ── */
@@ -2677,43 +2690,55 @@ async function addTx(tipo){
   const dataISO=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const data=`${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
   const tx={id:uuid(),tipo,desc,valor,cat,clienteId,fornecedorId,produtoId,data,dataISO};
-  // Garante companyId ANTES de qualquer operação
-  if(supa&&S.user&&!S.companyId){
-    await ensureCompany();
+  // Mutex ON: bloqueia syncTransactionsNow durante toda a operação
+  _txWriting++;
+  try{
+    // Garante companyId ANTES de qualquer operação
+    if(supa&&S.user&&!S.companyId){ await ensureCompany(); }
+    S.financial.transactions.push(tx);
+    save(); // localStorage imediato — transação está segura localmente
+    if(cat&&!S.categories[tipo].includes(cat)){
+      S.categories[tipo].push(cat);
+      if(supa&&S.user) persistCategory(cat,tipo);
+    }
+    renderFinOverview(); renderTxList(tipo); refreshCatLists();
+    $(tipo==='receita'?'rDesc':'dDesc').value='';
+    $(tipo==='receita'?'rValor':'dValor').value='';
+    $(tipo==='receita'?'rCatInput':'dCatInput').value='';
+    toast(`${tipo==='receita'?'Receita':'Despesa'} adicionada!`,'success');
+    // Persiste no Supabase (mutex ainda ativo — sync não pode interferir)
+    if(supa&&S.user&&S.companyId){
+      await persistTx(tx);
+      autoSaveCalendar();
+    }
+  }finally{
+    _txWriting--; // Mutex OFF: libera sync
+    // Após confirmar gravação, avisa outros dispositivos
+    if(supa&&S.user&&S.companyId) broadcastTxChange();
   }
-  S.financial.transactions.push(tx);
-  save(); // localStorage imediato
-  if(cat&&!S.categories[tipo].includes(cat)){
-    S.categories[tipo].push(cat);
-    if(supa&&S.user) persistCategory(cat,tipo);
-  }
-  // Persiste no Supabase de forma imediata e confiável
-  if(supa&&S.user&&S.companyId){
-    await persistTx(tx);
-    broadcastTxChange(); // avisa os outros dispositivos em tempo real
-    autoSaveCalendar();
-  }
-  renderFinOverview(); renderTxList(tipo); refreshCatLists();
-  $(tipo==='receita'?'rDesc':'dDesc').value='';
-  $(tipo==='receita'?'rValor':'dValor').value='';
-  $(tipo==='receita'?'rCatInput':'dCatInput').value='';
-  toast(`${tipo==='receita'?'Receita':'Despesa'} adicionada!`,'success');
 }
 
 async function removeTx(id){
-  S.financial.transactions=S.financial.transactions.filter(t=>t.id!==id);
-  save();
-  if(supa&&S.user){
-    if(!S.companyId) await ensureCompany();
-    if(S.companyId){
-      try{
-        const {error}=await supa.from('financial_transactions').delete().eq('id',id).eq('company_id',S.companyId);
-        if(error) console.error('removeTx delete error:',error);
-        else { broadcastTxChange(); autoSaveCalendar(); } // avisa os outros dispositivos
-      }catch(e){ console.error('removeTx:',e); }
+  // Mutex ON
+  _txWriting++;
+  try{
+    S.financial.transactions=S.financial.transactions.filter(t=>t.id!==id);
+    save();
+    renderFinOverview(); renderTxList('receita'); renderTxList('despesa');
+    if(supa&&S.user){
+      if(!S.companyId) await ensureCompany();
+      if(S.companyId){
+        try{
+          const {error}=await supa.from('financial_transactions').delete().eq('id',id).eq('company_id',S.companyId);
+          if(error) console.error('removeTx delete error:',error);
+          else autoSaveCalendar();
+        }catch(e){ console.error('removeTx:',e); }
+      }
     }
+  }finally{
+    _txWriting--; // Mutex OFF
+    if(supa&&S.user&&S.companyId) broadcastTxChange();
   }
-  renderFinOverview(); renderTxList('receita'); renderTxList('despesa');
 }
 
 function renderTxList(tipo){
