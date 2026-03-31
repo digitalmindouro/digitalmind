@@ -161,7 +161,7 @@ h1 em{font-style:normal;color:var(--primary);}
 #page-dashboard{display:none;}
 #page-dashboard.active{display:flex;flex-direction:column;min-height:calc(100vh - 61px);}
 .dash-layout{display:flex;flex:1;min-height:0;}
-.sidebar{width:var(--sw);flex-shrink:0;padding:18px 10px;background:rgba(4,12,26,.65);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:3px;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto;}
+.sidebar{width:var(--sw);flex-shrink:0;padding:18px 10px;background:rgba(4,12,26,.65);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:3px;position:sticky;top:61px;height:calc(100vh - 61px);overflow-y:auto;position:relative;z-index:1;}
 .sl-lbl{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(143,168,196,.35);padding:7px 9px 3px;}
 .sb-btn{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:13px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:.86rem;font-weight:600;text-align:left;width:100%;transition:var(--tr);font-family:inherit;}
 .sb-btn:hover{background:rgba(255,255,255,.05);color:var(--text);}
@@ -714,7 +714,7 @@ h1 em{font-style:normal;color:var(--primary);}
 
 /* Hamburger button — hidden on desktop */
 .mobile-menu-btn{display:none!important;font-size:1.3rem;padding:6px 10px;background:rgba(255,255,255,.08)!important;border-radius:10px;}
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:199;}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:199;pointer-events:auto;}
 .sidebar-overlay.active{display:block;}
 
 /* ── 1024px — tablets landscape */
@@ -5169,7 +5169,12 @@ function closeMobileMenu(){
 function setupMobileNavClose(){
   document.querySelectorAll('.sb-btn[data-mod]').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      if(window.innerWidth<=768) closeMobileMenu();
+      if(window.innerWidth<=768){
+        // Switch module first, then close menu
+        S.activeMod=btn.dataset.mod;
+        renderActiveModule();
+        setTimeout(closeMobileMenu, 50);
+      }
     });
   });
 }
