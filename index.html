@@ -2079,6 +2079,91 @@ async function persistCategory(nome,tipo){
   }catch(e){ /* silently ignore unique constraint errors */ }
 }
 
+/* ═══════════════ REALTIME SYNC ═══════════════ */
+let _rtChannel = null;
+
+// Converte linha do Supabase para formato local
+function _rowToTx(row){
+  return {
+    id: row.id,
+    tipo: row.tipo,
+    desc: row.descricao || '',
+    valor: parseFloat(row.valor) || 0,
+    cat: row.categoria || '',
+    clienteId: row.tipo === 'receita' ? (row.contact_id || null) : null,
+    fornecedorId: row.tipo === 'despesa' ? (row.contact_id || null) : null,
+    produtoId: row.product_id || null,
+    dataISO: row.data_lancamento ? row.data_lancamento.split('T')[0] : '',
+    data: row.data_lancamento ? new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR') : ''
+  };
+}
+
+// Atualiza UI do financeiro se estiver visível
+function _refreshFinUI(){
+  save();
+  if(S.activeMod === 'financeiro'){
+    renderFinOverview();
+    renderFinAlerts();
+    refreshCatLists();
+    renderAllTx(S.financial.transactions);
+    renderTxList('receita');
+    renderTxList('despesa');
+  }
+}
+
+function startRealtimeSync(){
+  if(!supa || !S.companyId || _rtChannel) return;
+
+  _rtChannel = supa
+    .channel(`fin-sync-${S.companyId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'financial_transactions',
+      filter: `company_id=eq.${S.companyId}`
+    }, ({new: row}) => {
+      // Ignora se este dispositivo já tem a transação (salvou ele mesmo)
+      if(S.financial.transactions.find(t => t.id === row.id)) return;
+      S.financial.transactions.unshift(_rowToTx(row));
+      _refreshFinUI();
+      toast('Nova transação recebida de outro dispositivo.', 'info', 'Sync');
+    })
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'financial_transactions',
+      filter: `company_id=eq.${S.companyId}`
+    }, ({new: row}) => {
+      const idx = S.financial.transactions.findIndex(t => t.id === row.id);
+      const tx = _rowToTx(row);
+      if(idx >= 0) S.financial.transactions[idx] = tx;
+      else S.financial.transactions.unshift(tx);
+      _refreshFinUI();
+    })
+    .on('postgres_changes', {
+      event: 'DELETE',
+      schema: 'public',
+      table: 'financial_transactions',
+      filter: `company_id=eq.${S.companyId}`
+    }, ({old}) => {
+      const antes = S.financial.transactions.length;
+      S.financial.transactions = S.financial.transactions.filter(t => t.id !== old.id);
+      if(S.financial.transactions.length !== antes) _refreshFinUI();
+    })
+    .subscribe(status => {
+      if(status === 'SUBSCRIBED'){
+        console.log('[Realtime] Sync financeiro ativo — company:', S.companyId);
+        $('connDot')?.classList.add('ok');
+      } else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT'){
+        console.warn('[Realtime] Erro no canal:', status);
+      }
+    });
+}
+
+function stopRealtimeSync(){
+  if(_rtChannel){ supa.removeChannel(_rtChannel); _rtChannel = null; }
+}
+
 /* ── Hidrata todos os dados do Supabase após login ── */
 async function hydrateFromSupabase(){
   if(!supa||!S.user) return;
@@ -2184,6 +2269,8 @@ async function hydrateFromSupabase(){
     renderDashboard();
     renderActiveModule(); // Renders whatever module is currently visible
     toast('Dados carregados.','success');
+    // Inicia sync em tempo real entre dispositivos
+    startRealtimeSync();
   }catch(e){ console.error('hydrateFromSupabase:',e); }
 }
 
@@ -3831,6 +3918,7 @@ $('authBtn').addEventListener('click', async(e)=>{
   btn.disabled=false; btn.textContent='Entrar →';
 });
 $('logoutBtn').addEventListener('click',async()=>{
+  stopRealtimeSync();
   if(supa) try{ await supa.auth.signOut(); }catch(e){}
   S.isLogged=false; S.user=null; S.connected=false;
   S.activeMod='diagnostico';
@@ -5408,6 +5496,8 @@ load();
     await hydrateFromSupabase();
     // Se empresa não existe ainda no Supabase, cria agora
     if(!S.companyId) await ensureCompany();
+    // Garante sync ativo (hydrateFromSupabase já tenta, mas companyId pode ter sido criado agora)
+    startRealtimeSync();
     renderDashboard();
     renderSalesState();
     goToStep('dashboard');
