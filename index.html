@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v37</title>
+<title>DigitalMind v38</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -917,6 +917,30 @@ body{overflow-x:hidden!important;}
   .mkt-progress-cards{grid-template-columns:1fr!important;}
 }
 
+
+/* ══ FINANCEIRO RESPONSIVO ══ */
+.fin-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.fin-entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fin-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.projecao-cards{display:grid;gap:10px;}
+
+@media(max-width:768px){
+  .fin-two-col{grid-template-columns:1fr!important;}
+  .fin-entry-grid{grid-template-columns:1fr!important;}
+  .fin-kpi-row{grid-template-columns:1fr 1fr!important;}
+  .fin-charts-row{grid-template-columns:1fr!important;}
+  .fin-tabs{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap!important;gap:6px;padding-bottom:6px;}
+  .fin-tab{white-space:nowrap;flex-shrink:0;font-size:.74rem!important;padding:8px 10px!important;}
+  .fchart-card{padding:14px!important;}
+  #dreCharts{grid-template-columns:1fr!important;}
+  .dre-line{font-size:.82rem!important;}
+}
+@media(max-width:480px){
+  .fin-kpi-row{grid-template-columns:1fr 1fr!important;}
+  .fk-val{font-size:1.2rem!important;}
+  .fin-tab{font-size:.7rem!important;padding:7px 8px!important;}
+}
+
 </style>
 </head>
 <body>
@@ -1493,7 +1517,7 @@ body{overflow-x:hidden!important;}
           <div class="fin-sub-panel hidden" id="drePanel">
             <h3>📊 DRE — Demonstrativo de Resultado</h3>
             <div id="dreContent"></div>
-            <div id="dreCharts" style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div id="dreCharts" class="fin-two-col" style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
               <div>
                 <h4 style="font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Receita × Despesa × Lucro</h4>
                 <div style="height:160px"><canvas id="dreBarChart"></canvas></div>
@@ -1577,7 +1601,7 @@ body{overflow-x:hidden!important;}
         <div class="fin-panel" id="ftab-receitas">
           <div class="fin-sub-panel" style="margin-bottom:0">
             <h3>💰 Lançar receita</h3>
-            <div class="fef fin-entry-form" id="receitaForm">
+            <div class="fef fin-entry-form fin-entry-grid" id="receitaForm">
               <div class="fl"><label>Descrição</label><input type="text" id="rDesc" placeholder="Ex.: Venda de serviço"/></div>
               <div class="fl"><label>Valor (R$)</label><input type="number" id="rValor" placeholder="0.00" min="0" step="0.01"/></div>
               <div class="fl"><label>Cliente</label><select id="rCliente"><option value="">Selecionar...</option></select></div>
@@ -1600,7 +1624,7 @@ body{overflow-x:hidden!important;}
         <div class="fin-panel" id="ftab-despesas">
           <div class="fin-sub-panel" style="margin-bottom:0">
             <h3>💸 Lançar despesa</h3>
-            <div class="fef fin-entry-form" id="despesaForm">
+            <div class="fef fin-entry-form fin-entry-grid" id="despesaForm">
               <div class="fl"><label>Descrição</label><input type="text" id="dDesc" placeholder="Ex.: Pagamento de aluguel"/></div>
               <div class="fl"><label>Valor (R$)</label><input type="number" id="dValor" placeholder="0.00" min="0" step="0.01"/></div>
               <div class="fl"><label>Fornecedor</label><select id="dFornecedor"><option value="">Selecionar...</option></select></div>
@@ -1783,7 +1807,7 @@ const S = {
   businessStage: null  // 1-5 detected automatically
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v37';
+const SKEY = 'dm_v38';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -2084,10 +2108,10 @@ async function hydrateFromSupabase(){
       };
     }
 
-    // Transações financeiras
+    // Transações financeiras — ALWAYS from table, never from ai_context
     const {data:txns}=await supa.from('financial_transactions').select('*')
-      .eq('company_id',company.id).order('created_at',{ascending:false});
-    if(txns?.length){ // Always load from Supabase — source of truth
+      .eq('company_id',company.id).order('data_lancamento',{ascending:false});
+    if(txns?.length){
       S.financial.transactions=txns.map(t=>({
         id:t.id, tipo:t.tipo, desc:t.descricao||'',
         valor:parseFloat(t.valor)||0, cat:t.categoria||'',
@@ -2128,11 +2152,10 @@ async function hydrateFromSupabase(){
     }catch(e){console.warn('company_evo_history table not ready');}
 
     save();
-    await loadFromSupabase(); // Load ALL data from ai_context — single source of truth
-    // Re-render active module with fresh data
-    if(S.activeMod==='financeiro') renderFinOverview();
-    else if(S.activeMod==='marketing') renderMktProgressCards();
-    else if(S.activeMod==='vendas') renderSalesState();
+    await loadFromSupabase(); // Load metadata from ai_context
+    // Re-render everything that has fresh data
+    renderDashboard();
+    renderActiveModule(); // Renders whatever module is currently visible
     toast('Dados carregados.','success');
   }catch(e){ console.error('hydrateFromSupabase:',e); }
 }
@@ -2419,7 +2442,7 @@ function openMetric(type){
     maturidade:{title:'Maturidade Digital',sub:'Score real baseado nas ações completadas no sistema.',content:(()=>{
       const realScore=S.maturityRealScore||calcMaturityScore();
       const breakdown=getMaturityBreakdown();
-      return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      return`<div class="fin-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
         <div style="text-align:center;padding:14px;border-radius:14px;background:rgba(75,140,255,.06);border:1px solid rgba(75,140,255,.12)">
           <p style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase">Maturidade Real</p>
           <div class="score-ring" style="--score:${realScore};width:90px;height:90px;margin:0 auto 6px"><span style="font-size:1.1rem">${realScore}%</span></div>
@@ -2542,10 +2565,28 @@ async function addTx(tipo){
   toast(`${tipo==='receita'?'Receita':'Despesa'} adicionada!`,'success');
 }
 
-function removeTx(id){
+async function removeTx(id){
   S.financial.transactions=S.financial.transactions.filter(t=>t.id!==id);
-  save(); renderFinOverview(); renderTxList('receita'); renderTxList('despesa');
-  if($('ftab-overview').classList.contains('active')) renderFinOverview();
+  // 1. Delete from financial_transactions table immediately
+  if(supa&&S.user&&S.companyId){
+    try{ await supa.from('financial_transactions').delete().eq('id',id); }catch(e){}
+    // 2. Also update ai_context so mobile gets the deletion on next load
+    try{
+      await supa.from('company_intelligence').upsert({
+        company_id:S.companyId,
+        ai_context:{
+          ...(await (async()=>{
+            const {data}=await supa.from('company_intelligence').select('ai_context').eq('company_id',S.companyId).single();
+            return data?.ai_context||{};
+          })()),
+          transactions:S.financial.transactions,
+          updated_at:new Date().toISOString()
+        }
+      },{onConflict:'company_id'});
+    }catch(e){}
+  }
+  save();
+  renderFinOverview(); renderTxList('receita'); renderTxList('despesa');
 }
 
 function renderTxList(tipo){
@@ -3059,7 +3100,7 @@ function renderActiveModule(){
   document.querySelectorAll('.mbn-btn').forEach(b=>b.classList.toggle('active',b.dataset.mod===S.activeMod));
   const am=document.getElementById(`module-${S.activeMod}`); if(am) am.classList.add('active');
   const ab=document.querySelector(`.sb-btn[data-mod="${S.activeMod}"]`); if(ab) ab.classList.add('active');
-  if(S.activeMod==='financeiro'){renderFinOverview();renderFinAlerts();refreshCatLists();}
+  if(S.activeMod==='financeiro'){renderFinOverview();renderFinAlerts();refreshCatLists();renderAllTx(S.financial.transactions);}
   if(S.activeMod==='vendas'){renderSalesGoals();renderCrmBoard();}
   if(S.activeMod==='evolucao'){renderStages();renderEvo();}
   if(S.activeMod==='evolucao') renderEvo();
@@ -4732,8 +4773,9 @@ async function loadFromSupabase(){
       if(ctx.formData?.companyName) S.formData={...S.formData,...ctx.formData};
       if(ctx.diag) S.diag=ctx.diag;
       if(ctx.salesProfile) S.salesProfile=ctx.salesProfile;
-      // Restore financial transactions from ai_context (works on any device)
-      if(ctx.transactions?.length) S.financial.transactions=ctx.transactions;
+      // NOTE: transactions are NOT restored from ai_context
+      // They are always loaded from financial_transactions table in hydrateFromSupabase
+      // ai_context.transactions is only a backup for extreme cases
       save(); // Update local cache
     }
   }catch(e){console.error('loadFromSupabase:',e);}
@@ -5236,7 +5278,7 @@ function openStageDetail(num){
       ${isCurrent ? '<span class="stage-badge current">← Você está aqui</span>' : ''}
     </div>
     <p class="stage-sub">${st.resumo}</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="fin-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="stage-section">
         <h4>Sinais desse estágio</h4>
         <ul>${st.sinais.map(s=>`<li>${s}</li>`).join('')}</ul>
@@ -5341,6 +5383,8 @@ load();
     renderDashboard();
     renderSalesState();
     goToStep('dashboard');
+    // Always re-render active module after data loads (fixes mobile race condition)
+    renderActiveModule();
   }
 })();
 
