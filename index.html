@@ -896,6 +896,27 @@ body{overflow-x:hidden!important;}
   .sidebar{display:none!important;}
 }
 
+
+/* ══ MARKETING RESPONSIVE ══ */
+@media(max-width:768px){
+  .mkt-agente-grid{grid-template-columns:1fr!important;}
+  .cal-side-panel{position:static!important;margin-top:16px;}
+  .mkt-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap!important;padding-bottom:4px;}
+  .mkt-tab{white-space:nowrap;flex-shrink:0;}
+  .cal-header{flex-wrap:wrap;gap:8px;}
+  .cal-legend{display:flex;flex-wrap:wrap;gap:6px;font-size:.7rem;}
+  .cal-grid{grid-template-columns:repeat(7,1fr)!important;}
+  .cal-day{min-height:38px!important;padding:3px!important;}
+  .cal-day-num{font-size:.72rem!important;}
+  .cal-upcoming-item{flex-wrap:wrap;}
+  .mkt-progress-cards{grid-template-columns:1fr 1fr!important;}
+}
+@media(max-width:480px){
+  .cal-day{min-height:32px!important;}
+  .cal-day-num{font-size:.65rem!important;}
+  .mkt-progress-cards{grid-template-columns:1fr!important;}
+}
+
 </style>
 </head>
 <body>
@@ -1264,7 +1285,7 @@ body{overflow-x:hidden!important;}
 
         <!-- AGENTE -->
         <div class="mkt-panel active" id="mktpanel-agente">
-          <div style="display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start">
+          <div class="mkt-agente-grid" style="display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start">
             <div class="card">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                 <h3>Converse com o agente</h3>
