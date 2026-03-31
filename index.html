@@ -2081,6 +2081,7 @@ async function persistCategory(nome,tipo){
 
 /* ═══════════════ REALTIME SYNC ═══════════════ */
 let _rtChannel = null;
+let _pollTimer = null;
 
 // Converte linha do Supabase para formato local
 function _rowToTx(row){
@@ -2111,57 +2112,68 @@ function _refreshFinUI(){
   }
 }
 
+// Busca as transações do Supabase e atualiza o estado local
+async function syncTransactionsNow(){
+  if(!supa || !S.user || !S.companyId) return;
+  try{
+    const {data:txns, error} = await supa
+      .from('financial_transactions')
+      .select('*')
+      .eq('company_id', S.companyId)
+      .order('data_lancamento', {ascending: false});
+    if(error || !txns) return;
+    // Detecta se houve mudança real antes de re-renderizar
+    const antes = JSON.stringify(S.financial.transactions.map(t=>t.id).sort());
+    const depois = JSON.stringify(txns.map(t=>t.id).sort());
+    if(antes === depois) return; // sem mudança, não re-renderiza
+    S.financial.transactions = txns.map(t => _rowToTx(t));
+    _refreshFinUI();
+  }catch(e){ console.warn('[Sync] syncTransactionsNow erro:', e); }
+}
+
+// Envia sinal de mudança para os outros dispositivos via Broadcast
+function broadcastTxChange(){
+  if(_rtChannel) {
+    _rtChannel.send({ type: 'broadcast', event: 'tx-change', payload: { ts: Date.now() } })
+      .catch(()=>{}); // falha silenciosa
+  }
+}
+
 function startRealtimeSync(){
   if(!supa || !S.companyId || _rtChannel) return;
 
+  // Canal Broadcast — funciona sem configuração de tabela no Supabase
   _rtChannel = supa
-    .channel(`fin-sync-${S.companyId}`)
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'financial_transactions',
-      filter: `company_id=eq.${S.companyId}`
-    }, ({new: row}) => {
-      // Ignora se este dispositivo já tem a transação (salvou ele mesmo)
-      if(S.financial.transactions.find(t => t.id === row.id)) return;
-      S.financial.transactions.unshift(_rowToTx(row));
-      _refreshFinUI();
-      toast('Nova transação recebida de outro dispositivo.', 'info', 'Sync');
-    })
-    .on('postgres_changes', {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'financial_transactions',
-      filter: `company_id=eq.${S.companyId}`
-    }, ({new: row}) => {
-      const idx = S.financial.transactions.findIndex(t => t.id === row.id);
-      const tx = _rowToTx(row);
-      if(idx >= 0) S.financial.transactions[idx] = tx;
-      else S.financial.transactions.unshift(tx);
-      _refreshFinUI();
-    })
-    .on('postgres_changes', {
-      event: 'DELETE',
-      schema: 'public',
-      table: 'financial_transactions',
-      filter: `company_id=eq.${S.companyId}`
-    }, ({old}) => {
-      const antes = S.financial.transactions.length;
-      S.financial.transactions = S.financial.transactions.filter(t => t.id !== old.id);
-      if(S.financial.transactions.length !== antes) _refreshFinUI();
+    .channel(`dm-company-${S.companyId}`, { config: { broadcast: { self: false } } })
+    .on('broadcast', { event: 'tx-change' }, () => {
+      // Outro dispositivo avisou que salvou — busca os dados atualizados
+      syncTransactionsNow();
     })
     .subscribe(status => {
-      if(status === 'SUBSCRIBED'){
-        console.log('[Realtime] Sync financeiro ativo — company:', S.companyId);
-        $('connDot')?.classList.add('ok');
-      } else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT'){
-        console.warn('[Realtime] Erro no canal:', status);
-      }
+      console.log('[Realtime] Canal broadcast status:', status, '| company:', S.companyId);
     });
+
+  // Fallback 1: poll a cada 30s (garante sync mesmo se broadcast falhar)
+  if(_pollTimer) clearInterval(_pollTimer);
+  _pollTimer = setInterval(() => syncTransactionsNow(), 30000);
+
+  // Fallback 2: sync ao voltar para a aba/app
+  document.addEventListener('visibilitychange', _onVisibilityChange);
+  window.addEventListener('focus', _onWindowFocus);
+}
+
+function _onVisibilityChange(){
+  if(!document.hidden) syncTransactionsNow();
+}
+function _onWindowFocus(){
+  syncTransactionsNow();
 }
 
 function stopRealtimeSync(){
   if(_rtChannel){ supa.removeChannel(_rtChannel); _rtChannel = null; }
+  if(_pollTimer){ clearInterval(_pollTimer); _pollTimer = null; }
+  document.removeEventListener('visibilitychange', _onVisibilityChange);
+  window.removeEventListener('focus', _onWindowFocus);
 }
 
 /* ── Hidrata todos os dados do Supabase após login ── */
@@ -2678,7 +2690,7 @@ async function addTx(tipo){
   // Persiste no Supabase de forma imediata e confiável
   if(supa&&S.user&&S.companyId){
     await persistTx(tx);
-    // Atualiza ai_context com a lista atual
+    broadcastTxChange(); // avisa os outros dispositivos em tempo real
     autoSaveCalendar();
   }
   renderFinOverview(); renderTxList(tipo); refreshCatLists();
@@ -2697,7 +2709,7 @@ async function removeTx(id){
       try{
         const {error}=await supa.from('financial_transactions').delete().eq('id',id).eq('company_id',S.companyId);
         if(error) console.error('removeTx delete error:',error);
-        else autoSaveCalendar(); // Atualiza ai_context
+        else { broadcastTxChange(); autoSaveCalendar(); } // avisa os outros dispositivos
       }catch(e){ console.error('removeTx:',e); }
     }
   }
