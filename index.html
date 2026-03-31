@@ -1812,6 +1812,12 @@ const SKEY = 'dm_v40';
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
 function fmtBRL(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);}
+// Bug fix: extrai chave YYYY-MM corretamente tanto de dataISO (YYYY-MM-DD) quanto de data (DD/MM/YYYY)
+function txMonthKey(t){
+  if(t.dataISO&&t.dataISO.length>=7) return t.dataISO.slice(0,7);
+  if(t.data?.includes('/')){const p=t.data.split('/');if(p.length===3) return `${p[2]}-${p[1].padStart(2,'0')}`;}
+  return '';
+}
 function uuid(){
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
     const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);
@@ -2030,7 +2036,7 @@ async function persistTx(tx){
       categoria:tx.cat||null,
       contact_id:tx.clienteId||tx.fornecedorId||null,
       product_id:tx.produtoId||null,
-      data_lancamento:tx.dataISO||new Date().toISOString().split('T')[0]
+      data_lancamento:tx.dataISO||(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;})()
     },{onConflict:'id'});
   }catch(e){
     console.error('persistTx error:', e?.message||e, '| companyId:', S.companyId, '| userId:', S.user?.id);
@@ -2129,9 +2135,10 @@ async function hydrateFromSupabase(){
     }
 
     // Transações financeiras — ALWAYS from table, never from ai_context
-    const {data:txns}=await supa.from('financial_transactions').select('*')
+    const {data:txns,error:txErr}=await supa.from('financial_transactions').select('*')
       .eq('company_id',company.id).order('data_lancamento',{ascending:false});
-    if(txns?.length){
+    if(!txErr && txns){
+      // Bug fix: sempre substituir (inclusive array vazio = transações deletadas em outro dispositivo)
       S.financial.transactions=txns.map(t=>({
         id:t.id, tipo:t.tipo, desc:t.descricao||'',
         valor:parseFloat(t.valor)||0, cat:t.categoria||'',
@@ -2567,7 +2574,8 @@ async function addTx(tipo){
   const fornecedorId=tipo==='despesa'?($('dFornecedor').value||null):null;
   const produtoId=tipo==='receita'?($('rProduto')?.value||null):null;
   const now=new Date();
-  const dataISO=now.toISOString().split('T')[0];
+  // Bug fix: usar data local em vez de UTC para evitar troca de dia/mês em fusos negativos
+  const dataISO=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const data=`${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
   const tx={id:uuid(),tipo,desc,valor,cat,clienteId,fornecedorId,produtoId,data,dataISO};
   // Garante companyId ANTES de qualquer operação
@@ -2600,7 +2608,7 @@ async function removeTx(id){
     if(!S.companyId) await ensureCompany();
     if(S.companyId){
       try{
-        const {error}=await supa.from('financial_transactions').delete().eq('id',id);
+        const {error}=await supa.from('financial_transactions').delete().eq('id',id).eq('company_id',S.companyId);
         if(error) console.error('removeTx delete error:',error);
         else autoSaveCalendar(); // Atualiza ai_context
       }catch(e){ console.error('removeTx:',e); }
@@ -2659,7 +2667,7 @@ function renderFinResumo(txns, tr, td, saldo, mg){
   if(card) card.style.display='block';
 
   const hoje=new Date(); const mesAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
-  const txMes=txns.filter(t=>(t.dataISO||t.data)?.slice(0,7)===mesAtual||((t.dataISO||t.data)?.includes('/')&&(t.dataISO||t.data)?.split('/').reverse().slice(0,2).join('-')===mesAtual));
+  const txMes=txns.filter(t=>txMonthKey(t)===mesAtual);
   const trMes=txMes.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
   const tdMes=txMes.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
 
@@ -2704,9 +2712,7 @@ function renderEvolucaoChart(txns){
   // Group by month
   const porMes={};
   txns.forEach(t=>{
-    const m=(t.dataISO||t.data)?.slice(0,7); if(!m||m.length<7) return;
-    // Ensure YYYY-MM format
-    const mKey=m.includes('/')?m.split('/').reverse().slice(0,2).join('-'):m;
+    const mKey=txMonthKey(t); if(!mKey) return;
     if(!porMes[mKey]) porMes[mKey]={rec:0,dep:0};
     if(t.tipo==='receita') porMes[mKey].rec+=t.valor;
     else porMes[mKey].dep+=t.valor;
@@ -2754,9 +2760,7 @@ function renderProjecao(){
   // Build monthly data from history
   const porMes={};
   txns.forEach(t=>{
-    const m=(t.dataISO||t.data)?.slice(0,7); if(!m||m.length<7) return;
-    // Ensure YYYY-MM format
-    const mKey=m.includes('/')?m.split('/').reverse().slice(0,2).join('-'):m;
+    const mKey=txMonthKey(t); if(!mKey) return;
     if(!porMes[mKey]) porMes[mKey]={rec:0,dep:0};
     if(t.tipo==='receita') porMes[mKey].rec+=t.valor;
     else porMes[mKey].dep+=t.valor;
@@ -2896,8 +2900,7 @@ function renderDRECharts(txns, tr, td, saldo, mg){
   if(dreMargem){
     const porMes={};
     txns.forEach(t=>{
-      const m=(t.dataISO||t.data)?.slice(0,7); if(!m||m.length<7) return;
-      const mK=m.includes('/')?m.split('/').reverse().slice(0,2).join('-'):m;
+      const mK=txMonthKey(t); if(!mK) return;
       if(!porMes[mK]) porMes[mK]={rec:0,dep:0};
       if(t.tipo==='receita') porMes[mK].rec+=t.valor;
       else porMes[mK].dep+=t.valor;
@@ -4788,9 +4791,10 @@ async function loadFromSupabase(){
       if(ctx.businessStage) S.businessStage=ctx.businessStage;
       if(ctx.finMeta) S.finMeta=ctx.finMeta;
       if(ctx.evoHistory?.length) S.evoHistory=ctx.evoHistory;
-      if(ctx.contacts?.length) S.contacts=ctx.contacts;
-      if(ctx.products?.length) S.products=ctx.products;
-      if(ctx.categories?.receita?.length) S.categories=ctx.categories;
+      // Bug fix: só restaurar do ai_context se as tabelas dedicadas não carregaram dados
+      if(ctx.contacts?.length && !S.contacts.length) S.contacts=ctx.contacts;
+      if(ctx.products?.length && !S.products.length) S.products=ctx.products;
+      if(ctx.categories?.receita?.length && !S.categories.receita.length) S.categories=ctx.categories;
       if(ctx.salesAnswers?.length) S.salesAnswers=ctx.salesAnswers;
       if(ctx.formData?.companyName) S.formData={...S.formData,...ctx.formData};
       if(ctx.diag) S.diag=ctx.diag;
