@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v38</title>
+<title>DigitalMind v39</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1807,12 +1807,17 @@ const S = {
   businessStage: null  // 1-5 detected automatically
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v38';
+const SKEY = 'dm_v39';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
 function fmtBRL(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);}
-function uuid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+function uuid(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+    const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);
+    return v.toString(16);
+  });
+}
 
 function toast(msg,type='info',title=''){
   const r=$('toastRoot'); const el=document.createElement('div'); el.className=`toast ${type}`;
@@ -2015,14 +2020,16 @@ async function persistSales(companyId){
 async function persistTx(tx){
   if(!supa||!S.user||!S.companyId) return;
   try{
-    await supa.from('financial_transactions').insert({
+    // UPSERT com id local garantindo que desktop e mobile usam o MESMO id
+    await supa.from('financial_transactions').upsert({
+      id:tx.id,  // ← chave: mesmo UUID em local e Supabase
       company_id:S.companyId, user_id:S.user.id,
       tipo:tx.tipo, descricao:tx.desc, valor:tx.valor,
       categoria:tx.cat||null,
       contact_id:tx.clienteId||tx.fornecedorId||null,
       product_id:tx.produtoId||null,
       data_lancamento:tx.dataISO||new Date().toISOString().split('T')[0]
-    });
+    },{onConflict:'id'});
   }catch(e){ console.error('persistTx:',e); }
 }
 
@@ -2557,7 +2564,11 @@ async function addTx(tipo){
     if(supa&&S.user) persistCategory(cat,tipo);
   }
   save();
-  if(supa&&S.user) await persistTx(tx);
+  if(supa&&S.user){
+    // Garante companyId antes de persistir
+    if(!S.companyId){ try{ await ensureCompany(); }catch(e){} }
+    await persistTx(tx);
+  }
   renderFinOverview(); renderTxList(tipo); refreshCatLists();
   $(tipo==='receita'?'rDesc':'dDesc').value='';
   $(tipo==='receita'?'rValor':'dValor').value='';
@@ -2567,23 +2578,9 @@ async function addTx(tipo){
 
 async function removeTx(id){
   S.financial.transactions=S.financial.transactions.filter(t=>t.id!==id);
-  // 1. Delete from financial_transactions table immediately
+  // DELETE pelo mesmo id que foi inserido — agora consistente
   if(supa&&S.user&&S.companyId){
-    try{ await supa.from('financial_transactions').delete().eq('id',id); }catch(e){}
-    // 2. Also update ai_context so mobile gets the deletion on next load
-    try{
-      await supa.from('company_intelligence').upsert({
-        company_id:S.companyId,
-        ai_context:{
-          ...(await (async()=>{
-            const {data}=await supa.from('company_intelligence').select('ai_context').eq('company_id',S.companyId).single();
-            return data?.ai_context||{};
-          })()),
-          transactions:S.financial.transactions,
-          updated_at:new Date().toISOString()
-        }
-      },{onConflict:'company_id'});
-    }catch(e){}
+    try{ await supa.from('financial_transactions').delete().eq('id',id); }catch(e){ console.error('removeTx delete:',e); }
   }
   save();
   renderFinOverview(); renderTxList('receita'); renderTxList('despesa');
