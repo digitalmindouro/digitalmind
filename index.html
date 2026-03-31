@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v36</title>
+<title>DigitalMind v37</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1783,7 +1783,7 @@ const S = {
   businessStage: null  // 1-5 detected automatically
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v36';
+const SKEY = 'dm_v37';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -2094,8 +2094,8 @@ async function hydrateFromSupabase(){
         clienteId:t.tipo==='receita'?t.contact_id:null,
         fornecedorId:t.tipo==='despesa'?t.contact_id:null,
         produtoId:t.product_id||null,
-        data:t.data_lancamento?new Date(t.data_lancamento).toLocaleDateString('pt-BR'):'',
-        dataISO:t.data_lancamento||''
+        dataISO:t.data_lancamento?.split('T')[0]||'',
+        data:t.data_lancamento?new Date(t.data_lancamento+'T12:00:00').toLocaleDateString('pt-BR'):''
       }));
     }
 
@@ -2594,7 +2594,7 @@ function renderFinResumo(txns, tr, td, saldo, mg){
   if(card) card.style.display='block';
 
   const hoje=new Date(); const mesAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
-  const txMes=txns.filter(t=>t.data?.startsWith(mesAtual));
+  const txMes=txns.filter(t=>(t.dataISO||t.data)?.slice(0,7)===mesAtual||((t.dataISO||t.data)?.includes('/')&&(t.dataISO||t.data)?.split('/').reverse().slice(0,2).join('-')===mesAtual));
   const trMes=txMes.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
   const tdMes=txMes.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
 
@@ -2612,7 +2612,8 @@ function renderFinResumo(txns, tr, td, saldo, mg){
   // Meses anteriores para comparativo
   const mesAnterior=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
   const mesAntStr=`${mesAnterior.getFullYear()}-${String(mesAnterior.getMonth()+1).padStart(2,'0')}`;
-  const trAnt=txns.filter(t=>t.tipo==='receita'&&t.data?.startsWith(mesAntStr)).reduce((a,t)=>a+t.valor,0);
+  const getMonthKey=t=>(t.dataISO||'').slice(0,7)||(t.data?.includes('/')?t.data.split('/').reverse().slice(0,2).join('-'):'');
+  const trAnt=txns.filter(t=>t.tipo==='receita'&&getMonthKey(t)===mesAntStr).reduce((a,t)=>a+t.valor,0);
   const varPct=trAnt>0?Math.round(((trMes-trAnt)/trAnt)*100):null;
 
   const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -2638,10 +2639,12 @@ function renderEvolucaoChart(txns){
   // Group by month
   const porMes={};
   txns.forEach(t=>{
-    const m=t.data?.slice(0,7); if(!m) return;
-    if(!porMes[m]) porMes[m]={rec:0,dep:0};
-    if(t.tipo==='receita') porMes[m].rec+=t.valor;
-    else porMes[m].dep+=t.valor;
+    const m=(t.dataISO||t.data)?.slice(0,7); if(!m||m.length<7) return;
+    // Ensure YYYY-MM format
+    const mKey=m.includes('/')?m.split('/').reverse().slice(0,2).join('-'):m;
+    if(!porMes[mKey]) porMes[mKey]={rec:0,dep:0};
+    if(t.tipo==='receita') porMes[mKey].rec+=t.valor;
+    else porMes[mKey].dep+=t.valor;
   });
   // Always include current month even if empty
   const hoje=new Date();
@@ -2686,10 +2689,12 @@ function renderProjecao(){
   // Build monthly data from history
   const porMes={};
   txns.forEach(t=>{
-    const m=t.data?.slice(0,7); if(!m) return;
-    if(!porMes[m]) porMes[m]={rec:0,dep:0};
-    if(t.tipo==='receita') porMes[m].rec+=t.valor;
-    else porMes[m].dep+=t.valor;
+    const m=(t.dataISO||t.data)?.slice(0,7); if(!m||m.length<7) return;
+    // Ensure YYYY-MM format
+    const mKey=m.includes('/')?m.split('/').reverse().slice(0,2).join('-'):m;
+    if(!porMes[mKey]) porMes[mKey]={rec:0,dep:0};
+    if(t.tipo==='receita') porMes[mKey].rec+=t.valor;
+    else porMes[mKey].dep+=t.valor;
   });
   const mesesHist=Object.keys(porMes).sort();
   if(!mesesHist.length){el.innerHTML='';return;}
@@ -2744,7 +2749,8 @@ function renderFinOverview(){
 
   // Meta de receita do mês
   const hoje=new Date(); const mesAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
-  const trMes=txns.filter(t=>t.tipo==='receita'&&t.data?.startsWith(mesAtual)).reduce((a,t)=>a+t.valor,0);
+  const _getMK=t=>(t.dataISO||'').slice(0,7)||(t.data?.includes('/')?t.data.split('/').reverse().slice(0,2).join('-'):'');
+  const trMes=txns.filter(t=>t.tipo==='receita'&&_getMK(t)===mesAtual).reduce((a,t)=>a+t.valor,0);
   renderFinMeta(trMes);
 
   // Resumo em linguagem natural
@@ -2825,10 +2831,11 @@ function renderDRECharts(txns, tr, td, saldo, mg){
   if(dreMargem){
     const porMes={};
     txns.forEach(t=>{
-      const m=t.data?.slice(0,7); if(!m) return;
-      if(!porMes[m]) porMes[m]={rec:0,dep:0};
-      if(t.tipo==='receita') porMes[m].rec+=t.valor;
-      else porMes[m].dep+=t.valor;
+      const m=(t.dataISO||t.data)?.slice(0,7); if(!m||m.length<7) return;
+      const mK=m.includes('/')?m.split('/').reverse().slice(0,2).join('-'):m;
+      if(!porMes[mK]) porMes[mK]={rec:0,dep:0};
+      if(t.tipo==='receita') porMes[mK].rec+=t.valor;
+      else porMes[mK].dep+=t.valor;
     });
     const meses=Object.keys(porMes).sort().slice(-6);
     if(meses.length>=1){
@@ -3738,9 +3745,12 @@ $('authBtn').addEventListener('click', async(e)=>{
       goToStep('dashboard');
     }catch(err){
       console.error(err);
-      toast(`Falha: ${err.message}. Entrando em modo preview.`,'warning','Aviso');
-      S.isLogged=true; renderDashboard(); renderSalesState();
-      goToStep('dashboard');
+      const msg=err.message||'Erro desconhecido';
+      if(msg.includes('Invalid login')||msg.includes('credentials')||msg.includes('password')){
+        toast('Email ou senha incorretos. Tente novamente.','error','Login');
+      } else {
+        toast(`Erro: ${msg}`,'error','Login');
+      }
     }
   } else {
     // Preview local sem Supabase
@@ -3750,7 +3760,16 @@ $('authBtn').addEventListener('click', async(e)=>{
   }
   btn.disabled=false; btn.textContent='Entrar →';
 });
-$('logoutBtn').addEventListener('click',()=>{S.isLogged=false;S.activeMod='diagnostico';goToStep('diagnostico');toast('Sessão encerrada.','info');});
+$('logoutBtn').addEventListener('click',async()=>{
+  if(supa) try{ await supa.auth.signOut(); }catch(e){}
+  S.isLogged=false; S.user=null; S.connected=false;
+  S.activeMod='diagnostico';
+  // Clear session data
+  Object.keys(localStorage).filter(k=>k.startsWith('dm_')||k.startsWith('sb-')).forEach(k=>localStorage.removeItem(k));
+  $('connDot')?.classList.remove('ok');
+  goToStep('diagnostico');
+  toast('Sessão encerrada.','info');
+});
 
 // Sidebar
 document.querySelectorAll('.sb-btn[data-mod]').forEach(btn=>{
@@ -4246,7 +4265,8 @@ function renderFinAlerts(){
   const mesAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
   const mesAnt=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
   const mesAntStr=`${mesAnt.getFullYear()}-${String(mesAnt.getMonth()+1).padStart(2,'0')}`;
-  const trMes=txns.filter(t=>t.tipo==='receita'&&t.data?.startsWith(mesAtual)).reduce((a,t)=>a+t.valor,0);
+  const _getMK=t=>(t.dataISO||'').slice(0,7)||(t.data?.includes('/')?t.data.split('/').reverse().slice(0,2).join('-'):'');
+  const trMes=txns.filter(t=>t.tipo==='receita'&&_getMK(t)===mesAtual).reduce((a,t)=>a+t.valor,0);
   const trAnt=txns.filter(t=>t.tipo==='receita'&&t.data?.startsWith(mesAntStr)).reduce((a,t)=>a+t.valor,0);
   const depMes=txns.filter(t=>t.tipo==='despesa'&&t.data?.startsWith(mesAtual)).reduce((a,t)=>a+t.valor,0);
   const depAnt=txns.filter(t=>t.tipo==='despesa'&&t.data?.startsWith(mesAntStr)).reduce((a,t)=>a+t.valor,0);
