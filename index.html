@@ -2087,7 +2087,7 @@ async function hydrateFromSupabase(){
     // Transações financeiras
     const {data:txns}=await supa.from('financial_transactions').select('*')
       .eq('company_id',company.id).order('created_at',{ascending:false});
-    if(txns?.length&&!S.financial.transactions.length){
+    if(txns?.length){ // Always load from Supabase — source of truth
       S.financial.transactions=txns.map(t=>({
         id:t.id, tipo:t.tipo, desc:t.descricao||'',
         valor:parseFloat(t.valor)||0, cat:t.categoria||'',
@@ -2128,7 +2128,11 @@ async function hydrateFromSupabase(){
     }catch(e){console.warn('company_evo_history table not ready');}
 
     save();
-    await loadFromSupabase(); // Load ALL data from ai_context
+    await loadFromSupabase(); // Load ALL data from ai_context — single source of truth
+    // Re-render active module with fresh data
+    if(S.activeMod==='financeiro') renderFinOverview();
+    else if(S.activeMod==='marketing') renderMktProgressCards();
+    else if(S.activeMod==='vendas') renderSalesState();
     toast('Dados carregados.','success');
   }catch(e){ console.error('hydrateFromSupabase:',e); }
 }
@@ -4697,6 +4701,7 @@ async function persistToSupabase(){
         formData:S.formData,
         diag:S.diag,
         salesProfile:S.salesProfile,
+        transactions:S.financial?.transactions||[],
         updated_at:new Date().toISOString()
       }
     },{onConflict:'company_id'});
@@ -4727,6 +4732,8 @@ async function loadFromSupabase(){
       if(ctx.formData?.companyName) S.formData={...S.formData,...ctx.formData};
       if(ctx.diag) S.diag=ctx.diag;
       if(ctx.salesProfile) S.salesProfile=ctx.salesProfile;
+      // Restore financial transactions from ai_context (works on any device)
+      if(ctx.transactions?.length) S.financial.transactions=ctx.transactions;
       save(); // Update local cache
     }
   }catch(e){console.error('loadFromSupabase:',e);}
