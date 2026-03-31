@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DigitalMind v39</title>
+<title>DigitalMind v40</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -1807,7 +1807,7 @@ const S = {
   businessStage: null  // 1-5 detected automatically
 };
 let fluxoChart=null, compoChart=null;
-const SKEY = 'dm_v39';
+const SKEY = 'dm_v40';
 
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
@@ -1894,9 +1894,12 @@ async function testSupa(){
 async function ensureCompany(){
   if(!supa||!S.user) return null;
   try{
-    const {data:rows}=await supa.from('companies').select('id')
+    // Busca empresa existente
+    const {data:rows,error:selErr}=await supa.from('companies').select('id')
       .eq('owner_user_id',S.user.id).order('created_at',{ascending:false}).limit(1);
+    if(selErr) throw selErr;
     const existing=rows&&rows.length?rows[0]:null;
+    // Apenas colunas confirmadas na tabela companies
     const payload={
       owner_user_id:S.user.id,
       company_name:S.formData.companyName||'Minha Empresa',
@@ -1904,20 +1907,19 @@ async function ensureCompany(){
       segment:S.formData.segment||null,
       market_time:S.formData.marketTime||null,
       sales_model:S.formData.salesModel||null,
-      lead_source:S.formData.leadSource||null,
       main_goal:S.formData.mainGoal||null,
       main_difficulty:S.formData.mainDifficulty||null,
-      failed_attempt:S.formData.failedAttempt||null,
-      desired_advance:S.formData.desiredAdvance||null,
       status:'active'
     };
     if(existing){
       await supa.from('companies').update(payload).eq('id',existing.id);
       S.companyId=existing.id; save(); return existing.id;
     }
-    const {data:created,error}=await supa.from('companies').insert(payload).select('id').single();
-    if(error) throw error;
-    S.companyId=created.id; save(); return created.id;
+    const {data:created,error:insErr}=await supa.from('companies').insert(payload).select('id').single();
+    if(insErr){ console.error('ensureCompany insert error:',insErr); return null; }
+    S.companyId=created.id; save();
+    console.log('Company created:', S.companyId);
+    return created.id;
   }catch(e){ console.error('ensureCompany:',e); return null; }
 }
 
@@ -2030,7 +2032,9 @@ async function persistTx(tx){
       product_id:tx.produtoId||null,
       data_lancamento:tx.dataISO||new Date().toISOString().split('T')[0]
     },{onConflict:'id'});
-  }catch(e){ console.error('persistTx:',e); }
+  }catch(e){
+    console.error('persistTx error:', e?.message||e, '| companyId:', S.companyId, '| userId:', S.user?.id);
+  }
 }
 
 /* ── Salva contact ── */
@@ -2077,7 +2081,16 @@ async function hydrateFromSupabase(){
     const {data:companies}=await supa.from('companies').select('*')
       .eq('owner_user_id',S.user.id).order('created_at',{ascending:false}).limit(1);
     const company=companies?.[0]||null;
-    if(!company) return;
+    if(!company){
+      // Empresa não existe — tenta criar e continua
+      console.log('No company found, will create on first action');
+      // Ainda carrega ai_context se houver (improvável sem empresa, mas seguro)
+      save();
+      await loadFromSupabase();
+      renderDashboard();
+      renderActiveModule();
+      return;
+    }
     S.companyId=company.id;
     S.formData={...S.formData,
       companyName:company.company_name||S.formData.companyName,
@@ -2557,17 +2570,21 @@ async function addTx(tipo){
   const dataISO=now.toISOString().split('T')[0];
   const data=`${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
   const tx={id:uuid(),tipo,desc,valor,cat,clienteId,fornecedorId,produtoId,data,dataISO};
+  // Garante companyId ANTES de qualquer operação
+  if(supa&&S.user&&!S.companyId){
+    await ensureCompany();
+  }
   S.financial.transactions.push(tx);
-  autoSaveCalendar();
+  save(); // localStorage imediato
   if(cat&&!S.categories[tipo].includes(cat)){
     S.categories[tipo].push(cat);
     if(supa&&S.user) persistCategory(cat,tipo);
   }
-  save();
-  if(supa&&S.user){
-    // Garante companyId antes de persistir
-    if(!S.companyId){ try{ await ensureCompany(); }catch(e){} }
+  // Persiste no Supabase de forma imediata e confiável
+  if(supa&&S.user&&S.companyId){
     await persistTx(tx);
+    // Atualiza ai_context com a lista atual
+    autoSaveCalendar();
   }
   renderFinOverview(); renderTxList(tipo); refreshCatLists();
   $(tipo==='receita'?'rDesc':'dDesc').value='';
@@ -2578,11 +2595,17 @@ async function addTx(tipo){
 
 async function removeTx(id){
   S.financial.transactions=S.financial.transactions.filter(t=>t.id!==id);
-  // DELETE pelo mesmo id que foi inserido — agora consistente
-  if(supa&&S.user&&S.companyId){
-    try{ await supa.from('financial_transactions').delete().eq('id',id); }catch(e){ console.error('removeTx delete:',e); }
-  }
   save();
+  if(supa&&S.user){
+    if(!S.companyId) await ensureCompany();
+    if(S.companyId){
+      try{
+        const {error}=await supa.from('financial_transactions').delete().eq('id',id);
+        if(error) console.error('removeTx delete error:',error);
+        else autoSaveCalendar(); // Atualiza ai_context
+      }catch(e){ console.error('removeTx:',e); }
+    }
+  }
   renderFinOverview(); renderTxList('receita'); renderTxList('despesa');
 }
 
@@ -3781,10 +3804,12 @@ $('authBtn').addEventListener('click', async(e)=>{
       $('connDot')?.classList.add('ok');
       // Hidrata dados do Supabase
       await hydrateFromSupabase();
+      if(!S.companyId) await ensureCompany();
       S.isLogged=true;
       renderDashboard(); renderSalesState();
       toast(`Bem-vindo, ${S.user.email}!`,'success','Login');
       goToStep('dashboard');
+      renderActiveModule();
     }catch(err){
       console.error(err);
       const msg=err.message||'Erro desconhecido';
@@ -5377,10 +5402,11 @@ load();
     $('connDot')?.classList.add('ok');
     // Restaura dashboard automaticamente sem precisar logar de novo
     await hydrateFromSupabase();
+    // Se empresa não existe ainda no Supabase, cria agora
+    if(!S.companyId) await ensureCompany();
     renderDashboard();
     renderSalesState();
     goToStep('dashboard');
-    // Always re-render active module after data loads (fixes mobile race condition)
     renderActiveModule();
   }
 })();
