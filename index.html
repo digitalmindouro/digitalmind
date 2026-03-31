@@ -854,6 +854,48 @@ body{overflow-x:hidden!important;}
 .fin-alert.danger{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--danger);}
 #finResumoCard{background:rgba(75,140,255,.04);border:1px solid rgba(75,140,255,.12);}
 
+
+/* ══ MOBILE BOTTOM NAVIGATION ══ */
+.mobile-bottom-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  height:60px;z-index:500;
+  background:rgba(4,12,26,.97);
+  border-top:1px solid var(--border);
+  backdrop-filter:blur(20px);
+  flex-direction:row;align-items:stretch;
+}
+.mbn-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;border:none;background:none;color:var(--muted);cursor:pointer;
+  font-family:inherit;padding:6px 2px;transition:color .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.mbn-btn:active{background:rgba(255,255,255,.05);}
+.mbn-btn.active{color:var(--text);}
+.mbn-btn.active .mbn-icon{
+  background:rgba(75,140,255,.15);
+  border-color:rgba(75,140,255,.35);
+  color:#60a5fa;
+}
+.mbn-icon{
+  font-size:.62rem;font-weight:900;letter-spacing:.04em;
+  padding:4px 8px;border-radius:8px;
+  border:1px solid transparent;
+  transition:all .15s;
+}
+.mbn-label{font-size:.62rem;font-weight:600;letter-spacing:.02em;}
+
+@media(max-width:768px){
+  .mobile-bottom-nav{display:flex;}
+  /* Add padding so content doesn't hide behind bottom nav */
+  .dash-main{padding-bottom:70px!important;}
+  /* Hide hamburger — not needed with bottom nav */
+  .mobile-menu-btn{display:none!important;}
+  /* Sidebar hidden on mobile — navigation via bottom bar */
+  .sidebar{display:none!important;}
+}
+
 </style>
 </head>
 <body>
@@ -1129,6 +1171,25 @@ body{overflow-x:hidden!important;}
 
 <!-- PAGE: DASHBOARD -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileMenu()"></div>
+
+<!-- MOBILE BOTTOM NAVIGATION -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+  <button class="mbn-btn" data-mod="diagnostico" onclick="switchModMobile(this)">
+    <span class="mbn-icon">DX</span><span class="mbn-label">Base</span>
+  </button>
+  <button class="mbn-btn" data-mod="marketing" onclick="switchModMobile(this)">
+    <span class="mbn-icon">MK</span><span class="mbn-label">Marketing</span>
+  </button>
+  <button class="mbn-btn" data-mod="vendas" onclick="switchModMobile(this)">
+    <span class="mbn-icon">VD</span><span class="mbn-label">Vendas</span>
+  </button>
+  <button class="mbn-btn" data-mod="financeiro" onclick="switchModMobile(this)">
+    <span class="mbn-icon">FN</span><span class="mbn-label">Financeiro</span>
+  </button>
+  <button class="mbn-btn" data-mod="evolucao" onclick="switchModMobile(this)">
+    <span class="mbn-icon">EV</span><span class="mbn-label">Evolução</span>
+  </button>
+</nav>
 <section class="page" id="page-dashboard">
   <div class="dash-layout">
     <aside class="sidebar">
@@ -2098,7 +2159,14 @@ function goToStep(s){
   if(s==='diagnostico') $('page-diagnostico').classList.add('active');
   if(s==='resultado') $('page-resultado').classList.add('active');
   if(s==='auth') $('page-auth').classList.add('active');
-  if(s==='dashboard'&&S.isLogged){$('page-dashboard').classList.add('active');handleResize();}
+  const _mbn=$('mobileBottomNav'); if(_mbn&&s!=='dashboard') _mbn.style.display='none';
+  if(s==='dashboard'&&S.isLogged){
+    $('page-dashboard').classList.add('active');
+    handleResize();
+    syncBottomNav();
+    const mbn=$('mobileBottomNav');
+    if(mbn) mbn.style.display=window.innerWidth<=768?'flex':'none';
+  }
   renderFormStep(); renderAuthMode(); renderActiveModule();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -2956,6 +3024,7 @@ function renderAuthMode(){
 function renderActiveModule(){
   document.querySelectorAll('.module').forEach(m=>m.classList.remove('active'));
   document.querySelectorAll('.sb-btn[data-mod]').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.mbn-btn').forEach(b=>b.classList.toggle('active',b.dataset.mod===S.activeMod));
   const am=document.getElementById(`module-${S.activeMod}`); if(am) am.classList.add('active');
   const ab=document.querySelector(`.sb-btn[data-mod="${S.activeMod}"]`); if(ab) ab.classList.add('active');
   if(S.activeMod==='financeiro'){renderFinOverview();renderFinAlerts();refreshCatLists();}
@@ -5184,6 +5253,30 @@ function handleResize(){
 }
 window.addEventListener('resize', handleResize);
 
+
+/* ═══════════════ MOBILE BOTTOM NAV ═══════════════ */
+function switchModMobile(btn){
+  const mod = btn?.dataset?.mod || btn;
+  S.activeMod = mod;
+  renderActiveModule();
+  // Sync bottom nav active state
+  document.querySelectorAll('.mbn-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.mod === mod);
+  });
+  // Sync sidebar active state
+  document.querySelectorAll('.sb-btn[data-mod]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.mod === mod);
+  });
+  // Scroll to top of content
+  document.querySelector('.dash-main')?.scrollTo({top:0, behavior:'smooth'});
+}
+
+function syncBottomNav(){
+  document.querySelectorAll('.mbn-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.mod === S.activeMod);
+  });
+}
+
 /* ═══════════════ INIT ═══════════════ */
 load();
 // Verificar sessão ativa no Supabase e restaurar login automaticamente
@@ -5242,6 +5335,7 @@ refreshCatLists();
 testSupa();
 setupMobileNavClose();
 handleResize();
+syncBottomNav();
 // Move all modals to body on init to prevent positioning issues
 // Move overlays to body (cards are nested inside overlays)
 ['calOverlay','calPopupOverlay','crmOverlay'].forEach(id=>{
