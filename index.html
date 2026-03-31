@@ -2,6 +2,13 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#05101e"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="DigitalMind"/>
+  <link rel="apple-touch-icon" href="/icon-192.png"/>
 <title>DigitalMind v40</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -1812,12 +1819,6 @@ const SKEY = 'dm_v40';
 /* ═══════════════ HELPERS ═══════════════ */
 const $=id=>document.getElementById(id);
 function fmtBRL(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);}
-// Bug fix: extrai chave YYYY-MM corretamente tanto de dataISO (YYYY-MM-DD) quanto de data (DD/MM/YYYY)
-function txMonthKey(t){
-  if(t.dataISO&&t.dataISO.length>=7) return t.dataISO.slice(0,7);
-  if(t.data?.includes('/')){const p=t.data.split('/');if(p.length===3) return `${p[2]}-${p[1].padStart(2,'0')}`;}
-  return '';
-}
 function uuid(){
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
     const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);
@@ -2036,7 +2037,7 @@ async function persistTx(tx){
       categoria:tx.cat||null,
       contact_id:tx.clienteId||tx.fornecedorId||null,
       product_id:tx.produtoId||null,
-      data_lancamento:tx.dataISO||(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;})()
+      data_lancamento:tx.dataISO||new Date().toISOString().split('T')[0]
     },{onConflict:'id'});
   }catch(e){
     console.error('persistTx error:', e?.message||e, '| companyId:', S.companyId, '| userId:', S.user?.id);
@@ -2077,116 +2078,6 @@ async function persistCategory(nome,tipo){
       company_id:S.companyId, user_id:S.user.id, nome, tipo
     });
   }catch(e){ /* silently ignore unique constraint errors */ }
-}
-
-/* ═══════════════ REALTIME SYNC ═══════════════ */
-let _rtChannel = null;
-let _pollTimer = null;
-// Mutex: conta operações de escrita em andamento (addTx / removeTx)
-// syncTransactionsNow é bloqueado enquanto _txWriting > 0
-let _txWriting = 0;
-
-// Converte linha do Supabase para formato local
-function _rowToTx(row){
-  return {
-    id: row.id,
-    tipo: row.tipo,
-    desc: row.descricao || '',
-    valor: parseFloat(row.valor) || 0,
-    cat: row.categoria || '',
-    clienteId: row.tipo === 'receita' ? (row.contact_id || null) : null,
-    fornecedorId: row.tipo === 'despesa' ? (row.contact_id || null) : null,
-    produtoId: row.product_id || null,
-    dataISO: row.data_lancamento ? row.data_lancamento.split('T')[0] : '',
-    data: row.data_lancamento ? new Date(row.data_lancamento + 'T12:00:00').toLocaleDateString('pt-BR') : ''
-  };
-}
-
-// Atualiza UI do financeiro se estiver visível
-function _refreshFinUI(){
-  save();
-  if(S.activeMod === 'financeiro'){
-    renderFinOverview();
-    renderFinAlerts();
-    refreshCatLists();
-    renderAllTx(S.financial.transactions);
-    renderTxList('receita');
-    renderTxList('despesa');
-  }
-}
-
-// Fingerprint de uma transação para detectar mudanças reais (id + valor + tipo + data)
-function _txHash(t){ return `${t.id}|${t.valor}|${t.tipo}|${t.dataISO||''}`; }
-function _txHashFromRow(r){ return `${r.id}|${parseFloat(r.valor)||0}|${r.tipo}|${(r.data_lancamento||'').split('T')[0]}`; }
-
-// Busca transações do Supabase e atualiza estado local
-// NUNCA executa enquanto addTx/removeTx estão em andamento (_txWriting > 0)
-async function syncTransactionsNow(){
-  if(!supa || !S.user || !S.companyId) return;
-  if(_txWriting > 0) return; // mutex: escrita em andamento, aguarda
-  try{
-    const {data:txns, error} = await supa
-      .from('financial_transactions')
-      .select('*')
-      .eq('company_id', S.companyId)
-      .order('data_lancamento', {ascending: false});
-    if(error || !txns) return;
-    // Verifica mutex novamente após o await (addTx pode ter iniciado durante a query)
-    if(_txWriting > 0) return;
-    // Compara fingerprints completos (id + valor + tipo + data) para detectar qualquer mudança
-    const setAntes = new Set(S.financial.transactions.map(_txHash));
-    const setDepois = new Set(txns.map(_txHashFromRow));
-    const semMudanca = setAntes.size === setDepois.size &&
-      [...setAntes].every(h => setDepois.has(h));
-    if(semMudanca) return;
-    S.financial.transactions = txns.map(t => _rowToTx(t));
-    _refreshFinUI();
-  }catch(e){ console.warn('[Sync] erro:', e); }
-}
-
-// Envia sinal para os outros dispositivos via Broadcast
-function broadcastTxChange(){
-  if(_rtChannel){
-    _rtChannel.send({ type:'broadcast', event:'tx-change', payload:{ ts: Date.now() } })
-      .catch(()=>{});
-  }
-}
-
-function startRealtimeSync(){
-  if(!supa || !S.companyId || _rtChannel) return;
-
-  _rtChannel = supa
-    .channel(`dm-company-${S.companyId}`, { config:{ broadcast:{ self:false } } })
-    .on('broadcast', { event:'tx-change' }, () => {
-      // Outro dispositivo salvou — aguarda 800ms para garantir que o Supabase propagou
-      setTimeout(() => syncTransactionsNow(), 800);
-    })
-    .subscribe(status => {
-      console.log('[Realtime] status:', status, '| company:', S.companyId);
-    });
-
-  // Poll a cada 30s como fallback
-  if(_pollTimer) clearInterval(_pollTimer);
-  _pollTimer = setInterval(() => syncTransactionsNow(), 30000);
-
-  // Sync ao voltar para a aba/app — com delay para não colidir com operações em andamento
-  document.addEventListener('visibilitychange', _onVisibilityChange);
-  window.addEventListener('focus', _onWindowFocus);
-}
-
-function _onVisibilityChange(){
-  if(!document.hidden) setTimeout(() => syncTransactionsNow(), 1000);
-}
-function _onWindowFocus(){
-  setTimeout(() => syncTransactionsNow(), 1000);
-}
-
-function stopRealtimeSync(){
-  if(_rtChannel){ supa.removeChannel(_rtChannel); _rtChannel = null; }
-  if(_pollTimer){ clearInterval(_pollTimer); _pollTimer = null; }
-  document.removeEventListener('visibilitychange', _onVisibilityChange);
-  window.removeEventListener('focus', _onWindowFocus);
-  _txWriting = 0;
 }
 
 /* ── Hidrata todos os dados do Supabase após login ── */
@@ -2245,10 +2136,9 @@ async function hydrateFromSupabase(){
     }
 
     // Transações financeiras — ALWAYS from table, never from ai_context
-    const {data:txns,error:txErr}=await supa.from('financial_transactions').select('*')
+    const {data:txns}=await supa.from('financial_transactions').select('*')
       .eq('company_id',company.id).order('data_lancamento',{ascending:false});
-    if(!txErr && txns){
-      // Bug fix: sempre substituir (inclusive array vazio = transações deletadas em outro dispositivo)
+    if(txns?.length){
       S.financial.transactions=txns.map(t=>({
         id:t.id, tipo:t.tipo, desc:t.descricao||'',
         valor:parseFloat(t.valor)||0, cat:t.categoria||'',
@@ -2294,8 +2184,6 @@ async function hydrateFromSupabase(){
     renderDashboard();
     renderActiveModule(); // Renders whatever module is currently visible
     toast('Dados carregados.','success');
-    // Inicia sync em tempo real entre dispositivos
-    startRealtimeSync();
   }catch(e){ console.error('hydrateFromSupabase:',e); }
 }
 
@@ -2686,59 +2574,46 @@ async function addTx(tipo){
   const fornecedorId=tipo==='despesa'?($('dFornecedor').value||null):null;
   const produtoId=tipo==='receita'?($('rProduto')?.value||null):null;
   const now=new Date();
-  // Bug fix: usar data local em vez de UTC para evitar troca de dia/mês em fusos negativos
-  const dataISO=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const dataISO=now.toISOString().split('T')[0];
   const data=`${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
   const tx={id:uuid(),tipo,desc,valor,cat,clienteId,fornecedorId,produtoId,data,dataISO};
-  // Mutex ON: bloqueia syncTransactionsNow durante toda a operação
-  _txWriting++;
-  try{
-    // Garante companyId ANTES de qualquer operação
-    if(supa&&S.user&&!S.companyId){ await ensureCompany(); }
-    S.financial.transactions.push(tx);
-    save(); // localStorage imediato — transação está segura localmente
-    if(cat&&!S.categories[tipo].includes(cat)){
-      S.categories[tipo].push(cat);
-      if(supa&&S.user) persistCategory(cat,tipo);
-    }
-    renderFinOverview(); renderTxList(tipo); refreshCatLists();
-    $(tipo==='receita'?'rDesc':'dDesc').value='';
-    $(tipo==='receita'?'rValor':'dValor').value='';
-    $(tipo==='receita'?'rCatInput':'dCatInput').value='';
-    toast(`${tipo==='receita'?'Receita':'Despesa'} adicionada!`,'success');
-    // Persiste no Supabase (mutex ainda ativo — sync não pode interferir)
-    if(supa&&S.user&&S.companyId){
-      await persistTx(tx);
-      autoSaveCalendar();
-    }
-  }finally{
-    _txWriting--; // Mutex OFF: libera sync
-    // Após confirmar gravação, avisa outros dispositivos
-    if(supa&&S.user&&S.companyId) broadcastTxChange();
+  // Garante companyId ANTES de qualquer operação
+  if(supa&&S.user&&!S.companyId){
+    await ensureCompany();
   }
+  S.financial.transactions.push(tx);
+  save(); // localStorage imediato
+  if(cat&&!S.categories[tipo].includes(cat)){
+    S.categories[tipo].push(cat);
+    if(supa&&S.user) persistCategory(cat,tipo);
+  }
+  // Persiste no Supabase de forma imediata e confiável
+  if(supa&&S.user&&S.companyId){
+    await persistTx(tx);
+    // Atualiza ai_context com a lista atual
+    autoSaveCalendar();
+  }
+  renderFinOverview(); renderTxList(tipo); refreshCatLists();
+  $(tipo==='receita'?'rDesc':'dDesc').value='';
+  $(tipo==='receita'?'rValor':'dValor').value='';
+  $(tipo==='receita'?'rCatInput':'dCatInput').value='';
+  toast(`${tipo==='receita'?'Receita':'Despesa'} adicionada!`,'success');
 }
 
 async function removeTx(id){
-  // Mutex ON
-  _txWriting++;
-  try{
-    S.financial.transactions=S.financial.transactions.filter(t=>t.id!==id);
-    save();
-    renderFinOverview(); renderTxList('receita'); renderTxList('despesa');
-    if(supa&&S.user){
-      if(!S.companyId) await ensureCompany();
-      if(S.companyId){
-        try{
-          const {error}=await supa.from('financial_transactions').delete().eq('id',id).eq('company_id',S.companyId);
-          if(error) console.error('removeTx delete error:',error);
-          else autoSaveCalendar();
-        }catch(e){ console.error('removeTx:',e); }
-      }
+  S.financial.transactions=S.financial.transactions.filter(t=>t.id!==id);
+  save();
+  if(supa&&S.user){
+    if(!S.companyId) await ensureCompany();
+    if(S.companyId){
+      try{
+        const {error}=await supa.from('financial_transactions').delete().eq('id',id);
+        if(error) console.error('removeTx delete error:',error);
+        else autoSaveCalendar(); // Atualiza ai_context
+      }catch(e){ console.error('removeTx:',e); }
     }
-  }finally{
-    _txWriting--; // Mutex OFF
-    if(supa&&S.user&&S.companyId) broadcastTxChange();
   }
+  renderFinOverview(); renderTxList('receita'); renderTxList('despesa');
 }
 
 function renderTxList(tipo){
@@ -2791,7 +2666,7 @@ function renderFinResumo(txns, tr, td, saldo, mg){
   if(card) card.style.display='block';
 
   const hoje=new Date(); const mesAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
-  const txMes=txns.filter(t=>txMonthKey(t)===mesAtual);
+  const txMes=txns.filter(t=>(t.dataISO||t.data)?.slice(0,7)===mesAtual||((t.dataISO||t.data)?.includes('/')&&(t.dataISO||t.data)?.split('/').reverse().slice(0,2).join('-')===mesAtual));
   const trMes=txMes.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
   const tdMes=txMes.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
 
@@ -2836,7 +2711,9 @@ function renderEvolucaoChart(txns){
   // Group by month
   const porMes={};
   txns.forEach(t=>{
-    const mKey=txMonthKey(t); if(!mKey) return;
+    const m=(t.dataISO||t.data)?.slice(0,7); if(!m||m.length<7) return;
+    // Ensure YYYY-MM format
+    const mKey=m.includes('/')?m.split('/').reverse().slice(0,2).join('-'):m;
     if(!porMes[mKey]) porMes[mKey]={rec:0,dep:0};
     if(t.tipo==='receita') porMes[mKey].rec+=t.valor;
     else porMes[mKey].dep+=t.valor;
@@ -2884,7 +2761,9 @@ function renderProjecao(){
   // Build monthly data from history
   const porMes={};
   txns.forEach(t=>{
-    const mKey=txMonthKey(t); if(!mKey) return;
+    const m=(t.dataISO||t.data)?.slice(0,7); if(!m||m.length<7) return;
+    // Ensure YYYY-MM format
+    const mKey=m.includes('/')?m.split('/').reverse().slice(0,2).join('-'):m;
     if(!porMes[mKey]) porMes[mKey]={rec:0,dep:0};
     if(t.tipo==='receita') porMes[mKey].rec+=t.valor;
     else porMes[mKey].dep+=t.valor;
@@ -3024,7 +2903,8 @@ function renderDRECharts(txns, tr, td, saldo, mg){
   if(dreMargem){
     const porMes={};
     txns.forEach(t=>{
-      const mK=txMonthKey(t); if(!mK) return;
+      const m=(t.dataISO||t.data)?.slice(0,7); if(!m||m.length<7) return;
+      const mK=m.includes('/')?m.split('/').reverse().slice(0,2).join('-'):m;
       if(!porMes[mK]) porMes[mK]={rec:0,dep:0};
       if(t.tipo==='receita') porMes[mK].rec+=t.valor;
       else porMes[mK].dep+=t.valor;
@@ -3955,7 +3835,6 @@ $('authBtn').addEventListener('click', async(e)=>{
   btn.disabled=false; btn.textContent='Entrar →';
 });
 $('logoutBtn').addEventListener('click',async()=>{
-  stopRealtimeSync();
   if(supa) try{ await supa.auth.signOut(); }catch(e){}
   S.isLogged=false; S.user=null; S.connected=false;
   S.activeMod='diagnostico';
@@ -4916,10 +4795,9 @@ async function loadFromSupabase(){
       if(ctx.businessStage) S.businessStage=ctx.businessStage;
       if(ctx.finMeta) S.finMeta=ctx.finMeta;
       if(ctx.evoHistory?.length) S.evoHistory=ctx.evoHistory;
-      // Bug fix: só restaurar do ai_context se as tabelas dedicadas não carregaram dados
-      if(ctx.contacts?.length && !S.contacts.length) S.contacts=ctx.contacts;
-      if(ctx.products?.length && !S.products.length) S.products=ctx.products;
-      if(ctx.categories?.receita?.length && !S.categories.receita.length) S.categories=ctx.categories;
+      if(ctx.contacts?.length) S.contacts=ctx.contacts;
+      if(ctx.products?.length) S.products=ctx.products;
+      if(ctx.categories?.receita?.length) S.categories=ctx.categories;
       if(ctx.salesAnswers?.length) S.salesAnswers=ctx.salesAnswers;
       if(ctx.formData?.companyName) S.formData={...S.formData,...ctx.formData};
       if(ctx.diag) S.diag=ctx.diag;
@@ -5533,8 +5411,6 @@ load();
     await hydrateFromSupabase();
     // Se empresa não existe ainda no Supabase, cria agora
     if(!S.companyId) await ensureCompany();
-    // Garante sync ativo (hydrateFromSupabase já tenta, mas companyId pode ter sido criado agora)
-    startRealtimeSync();
     renderDashboard();
     renderSalesState();
     goToStep('dashboard');
@@ -5589,6 +5465,15 @@ syncBottomNav();
 });
 
 
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js')
+      .then(()=>console.log('SW registered'))
+      .catch(e=>console.warn('SW error:',e));
+  });
+}
 </script>
 </body>
 </html>
