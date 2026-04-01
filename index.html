@@ -3209,11 +3209,8 @@ function initMktGreeting(){
     if(txns.length===0) partes.push('💰 **Nenhum lançamento financeiro** — sem dados financeiros não consigo calcular sua margem real.');
     else if(saldo<0) partes.push(`💸 **Saldo negativo de R$ ${Math.abs(saldo).toLocaleString('pt-BR',{minimumFractionDigits:2})}** — despesas estão superando receitas.`);
     if(partes.length===1) partes.push('✅ Tudo parece no caminho certo. Me diga onde quer aprofundar: marketing, vendas ou financeiro?');
-    else partes.push('
-O que quer atacar primeiro?');
-    msg=partes.join('
-
-');
+    else partes.push('\nO que quer atacar primeiro?');
+    msg=partes.join('\n\n');
   }
   addMsg(box, msg, 'ai');
 }
