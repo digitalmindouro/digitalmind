@@ -1255,11 +1255,26 @@ body{overflow-x:hidden!important;}
       <button class="sb-btn" data-mod="financeiro" style="--mod-color:var(--c-fin);--mod-bg:var(--c-fin-bg)"><div class="sb-icon">FN</div><span class="sbl">Financeiro</span></button>
       <button class="sb-btn" data-mod="evolucao" style="--mod-color:var(--c-evo);--mod-bg:var(--c-evo-bg)"><div class="sb-icon">EV</div><span class="sbl">Evolução</span></button>
       <div class="sb-bottom">
+        <div style="padding:8px 11px;font-size:.76rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="sbUserEmail"></div>
         <button class="sb-btn" id="logoutBtn"><div class="sb-icon">↩</div><span class="sbl">Sair</span></button>
       </div>
     </aside>
 
     <div class="dash-main">
+      <!-- ONBOARDING MODULE -->
+      <div class="module" id="module-onboarding">
+        <div style="max-width:600px;margin:0 auto;padding:40px 0">
+          <div style="text-align:center;margin-bottom:40px">
+            <div style="width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,var(--primary),var(--primary-2));margin:0 auto 20px;display:grid;place-items:center;font-size:2rem;box-shadow:0 8px 24px rgba(75,140,255,.3)">✈️</div>
+            <h2 style="font-size:1.8rem;letter-spacing:-.04em;margin-bottom:10px">Bem-vindo à DigitalMind</h2>
+            <p style="color:var(--muted);line-height:1.7;font-size:.95rem">Seu painel estratégico está pronto. Siga os passos abaixo para configurar tudo e começar a tomar decisões com dados reais.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:32px" id="onboardingChecklist"></div>
+          <button class="btn btn-primary" style="width:100%;padding:15px" onclick="startOnboarding()">Começar diagnóstico →</button>
+          <p style="text-align:center;font-size:.8rem;color:var(--muted);margin-top:14px">Leva apenas 3 minutos. Você pode refazer quando quiser.</p>
+        </div>
+      </div>
+
       <!-- DIAGNÓSTICO MODULE -->
       <div class="module active" id="module-diagnostico">
         <div class="mod-header">
@@ -1848,6 +1863,21 @@ function save(){
     mktGoals:S.mktGoals, contentCalendar:S.contentCalendar, salesGoals:S.salesGoals, maturityRealScore:S.maturityRealScore||0, salesLeads:S.salesLeads, finMeta:S.finMeta||null, evoHistory:S.evoHistory, businessStage:S.businessStage
   }));}catch(e){}
 }
+// Limpa completamente o estado em memória — Supabase vai reconstruir tudo
+function clearLocalState(){
+  S.formData={companyName:'',segment:'',marketTime:'',city:'',salesModel:'',leadSource:'',digitalPresence:'',mainDifficulty:'',failedAttempt:'',mainGoal:'',desiredAdvance:''};
+  S.diag=null; S.salesProfile=null;
+  S.salesAnswers=Array(10).fill('');
+  S.financial={transactions:[]};
+  S.categories={receita:['Serviços','Produtos','Consultoria','Outros'],despesa:['Operacional','Marketing','Pessoal','Fornecedores','Outros']};
+  S.contacts=[]; S.products=[]; S.evoHistory=[];
+  S.companyId=null; S.mktGoals={}; S.contentCalendar={};
+  S.salesGoals=[]; S.salesLeads=[]; S.finMeta=null;
+  S.maturityRealScore=0; S.businessStage=null;
+  // Limpa localStorage da sessão atual
+  try{ localStorage.removeItem(SKEY); }catch(e){}
+}
+
 function load(){
   try{
     // Migrate from previous version if current key is empty
@@ -2201,6 +2231,16 @@ async function hydrateFromSupabase(){
 
     save();
     await loadFromSupabase(); // Load metadata from ai_context
+    // Após loadFromSupabase, garante que os dados da tabela companies prevalecem
+    // (loadFromSupabase pode ter sobrescrito com ai_context stale)
+    if(company.company_name) S.formData.companyName=company.company_name;
+    if(company.city) S.formData.city=company.city;
+    if(company.segment) S.formData.segment=company.segment;
+    if(company.market_time) S.formData.marketTime=company.market_time;
+    if(company.sales_model) S.formData.salesModel=company.sales_model;
+    if(company.main_goal) S.formData.mainGoal=company.main_goal;
+    if(company.main_difficulty) S.formData.mainDifficulty=company.main_difficulty;
+    save();
     // Re-render everything that has fresh data
     renderDashboard();
     renderActiveModule(); // Renders whatever module is currently visible
@@ -2433,6 +2473,9 @@ function renderResultado(){
 
 /* ═══════════════ RENDER DASHBOARD ═══════════════ */
 function renderDashboard(){
+  // Mostra email do usuário na sidebar
+  const sbEmail=document.getElementById('sbUserEmail');
+  if(sbEmail) sbEmail.textContent=S.user?.email||'';
   // Calcula maturidade real separado do score do formulário
   const realScore=calcMaturityScore();
   S.maturityRealScore=realScore;
@@ -3169,6 +3212,7 @@ function renderActiveModule(){
   document.querySelectorAll('.mbn-btn').forEach(b=>b.classList.toggle('active',b.dataset.mod===S.activeMod));
   const am=document.getElementById(`module-${S.activeMod}`); if(am) am.classList.add('active');
   const ab=document.querySelector(`.sb-btn[data-mod="${S.activeMod}"]`); if(ab) ab.classList.add('active');
+  if(S.activeMod==='onboarding') renderOnboardingChecklist();
   if(S.activeMod==='financeiro'){renderFinOverview();renderFinAlerts();refreshCatLists();renderAllTx(S.financial.transactions);}
   if(S.activeMod==='vendas'){renderSalesGoals();renderCrmBoard();}
   if(S.activeMod==='evolucao'){renderStages();renderEvo();}
@@ -3889,14 +3933,17 @@ $('authBtn').addEventListener('click', async(e)=>{
       S.user=result.data.user||result.data.session?.user||null;
       S.connected=true;
       $('connDot')?.classList.add('ok');
-      // Hidrata dados do Supabase
+      // Limpa estado local antigo antes de hidratar — evita contaminação com dados de sessões anteriores
+      clearLocalState();
+      // Hidrata dados frescos do Supabase como única fonte de verdade
       await hydrateFromSupabase();
       if(!S.companyId) await ensureCompany();
       S.isLogged=true;
       renderDashboard(); renderSalesState();
       toast(`Bem-vindo, ${S.user.email}!`,'success','Login');
       goToStep('dashboard');
-      renderActiveModule();
+      checkShowOnboarding();
+      if(S.activeMod!=='onboarding') renderActiveModule();
     }catch(err){
       console.error(err);
       const msg=err.message||'Erro desconhecido';
@@ -4897,12 +4944,20 @@ async function loadFromSupabase(){
       if(ctx.categories?.receita?.length) S.categories=ctx.categories;
       if(ctx.salesAnswers?.length) S.salesAnswers=ctx.salesAnswers;
       if(ctx.formData){
-        // Dados da tabela companies têm prioridade absoluta sobre ai_context
-        // Preserva os campos que hydrateFromSupabase já carregou da tabela
+        // Dados da tabela companies têm prioridade ABSOLUTA sobre ai_context
+        // Preserva TODOS os campos que hydrateFromSupabase já carregou da tabela companies
         const tableFields=['companyName','city','segment','marketTime','salesModel','mainGoal','mainDifficulty'];
         const tableValues={};
         tableFields.forEach(f=>{ if(S.formData[f]) tableValues[f]=S.formData[f]; });
+        // Só restaura campos extras do ai_context (leadSource, digitalPresence, etc)
+        // mas NUNCA sobrescreve dados que vieram da tabela
         S.formData={...S.formData,...ctx.formData,...tableValues};
+        // Se o nome da empresa no contexto é diferente do Supabase, o ai_context está stale — atualiza
+        if(tableValues.companyName && ctx.formData.companyName && 
+           ctx.formData.companyName !== tableValues.companyName){
+          console.warn('ai_context stale: empresa no contexto (',ctx.formData.companyName,') difere da tabela (',tableValues.companyName,'). Ignorando dados do contexto antigo.');
+          // Não restaura diag/salesProfile do contexto antigo se a empresa mudou
+        }
       }
       if(ctx.diag) S.diag=ctx.diag;
       if(ctx.salesProfile) S.salesProfile=ctx.salesProfile;
@@ -5529,6 +5584,52 @@ function syncBottomNav(){
   });
 }
 
+/* ═══════════════ ONBOARDING ═══════════════ */
+function renderOnboardingChecklist(){
+  const el=document.getElementById('onboardingChecklist'); if(!el) return;
+  const steps=[
+    {label:'Diagnóstico estratégico',desc:'Responda 6 perguntas sobre sua empresa',done:Boolean(S.diag),go:function(){S.activeMod='diagnostico';renderActiveModule();}},
+    {label:'Diagnóstico de vendas',desc:'10 perguntas sobre seu processo comercial',done:Boolean(S.salesProfile),go:function(){S.activeMod='vendas';renderActiveModule();}},
+    {label:'Primeiro lançamento financeiro',desc:'Registre uma receita ou despesa',done:S.financial.transactions.length>0,go:function(){S.activeMod='financeiro';renderActiveModule();switchFinTab('receitas');}},
+    {label:'Cadastre um cliente',desc:'Adicione seu primeiro contato',done:S.contacts.filter(function(c){return c.tipo==='cliente';}).length>0,go:function(){S.activeMod='financeiro';renderActiveModule();switchFinTab('clientes');}},
+  ];
+  el.innerHTML='';
+  steps.forEach(function(s,i){
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;transition:all .2s;margin-bottom:2px;cursor:'+(s.done?'default':'pointer');
+    div.style.background=s.done?'rgba(34,197,94,.06)':'rgba(255,255,255,.04)';
+    div.style.border='1px solid '+(s.done?'rgba(34,197,94,.2)':'rgba(255,255,255,.08)');
+    if(!s.done){
+      div.onmouseover=function(){div.style.borderColor='rgba(75,140,255,.3)';div.style.background='rgba(75,140,255,.04)';};
+      div.onmouseout=function(){div.style.borderColor='rgba(255,255,255,.08)';div.style.background='rgba(255,255,255,.04)';};
+      div.onclick=s.go;
+    }
+    const icon=document.createElement('div');
+    icon.style.cssText='width:36px;height:36px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;font-size:'+(s.done?'1.1rem':'.88rem')+';font-weight:700;background:'+(s.done?'rgba(34,197,94,.15)':'rgba(255,255,255,.06)')+';border:1px solid '+(s.done?'rgba(34,197,94,.3)':'rgba(255,255,255,.1)');
+    icon.textContent=s.done?'✅':String(i+1);
+    const text=document.createElement('div');
+    text.style.flex='1';
+    text.innerHTML='<div style="font-weight:700;font-size:.92rem;color:'+(s.done?'var(--success)':'var(--text)')+'">'+s.label+'</div><div style="font-size:.8rem;color:var(--muted);margin-top:2px">'+s.desc+'</div>';
+    div.appendChild(icon);
+    div.appendChild(text);
+    if(!s.done){const arr=document.createElement('span');arr.textContent='→';arr.style.cssText='color:var(--muted);font-size:.8rem';div.appendChild(arr);}
+    el.appendChild(div);
+  });
+}
+function startOnboarding(){
+  S.activeMod='diagnostico';
+  renderActiveModule();
+}
+function checkShowOnboarding(){
+  // Mostra onboarding se usuário novo: sem diagnóstico e sem transações
+  const isNew=!S.diag&&S.financial.transactions.length===0&&S.contacts.length===0;
+  if(isNew&&S.isLogged){
+    S.activeMod='onboarding';
+    renderOnboardingChecklist();
+    renderActiveModule();
+  }
+}
+
 /* ═══════════════ INIT ═══════════════ */
 load();
 // Verificar sessão ativa no Supabase e restaurar login automaticamente
@@ -5540,6 +5641,8 @@ load();
     S.connected = true;
     S.isLogged = true;
     $('connDot')?.classList.add('ok');
+    // Limpa dados locais antigos — Supabase é a única fonte de verdade
+    clearLocalState();
     // Restaura dashboard automaticamente sem precisar logar de novo
     await hydrateFromSupabase();
     // Se empresa não existe ainda no Supabase, cria agora
@@ -5547,7 +5650,8 @@ load();
     renderDashboard();
     renderSalesState();
     goToStep('dashboard');
-    renderActiveModule();
+    checkShowOnboarding();
+    if(S.activeMod!=='onboarding') renderActiveModule();
   }
 })();
 
