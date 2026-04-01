@@ -2231,8 +2231,9 @@ async function hydrateFromSupabase(){
 
     save();
     await loadFromSupabase(); // Load metadata from ai_context
-    // Após loadFromSupabase, garante que os dados da tabela companies prevalecem
-    // (loadFromSupabase pode ter sobrescrito com ai_context stale)
+
+    // ══ GARANTIA ABSOLUTA: dados da tabela companies sempre prevalecem ══
+    // Isso deve rodar APÓS loadFromSupabase para desfazer qualquer sobrescrita do ai_context
     if(company.company_name) S.formData.companyName=company.company_name;
     if(company.city) S.formData.city=company.city;
     if(company.segment) S.formData.segment=company.segment;
@@ -2240,10 +2241,46 @@ async function hydrateFromSupabase(){
     if(company.sales_model) S.formData.salesModel=company.sales_model;
     if(company.main_goal) S.formData.mainGoal=company.main_goal;
     if(company.main_difficulty) S.formData.mainDifficulty=company.main_difficulty;
+
+    // ══ SANITIZAÇÃO DO AI_CONTEXT ══
+    // Verifica se o ai_context pertence à empresa correta usando o snapshot salvo
+    // Se o snapshot de empresa não existe ou é diferente, o ai_context é de outra sessão
+    try{
+      const {data:intel}=await supa.from('company_intelligence')
+        .select('ai_context').eq('company_id',company.id).single();
+      if(intel?.ai_context){
+        const ctx=intel.ai_context;
+        const snapshotNome=(ctx._company_name||'').toLowerCase();
+        const nomeAtual=(company.company_name||'').toLowerCase();
+        // Se snapshot existe e é diferente, ai_context é stale — limpa no Supabase
+        if(snapshotNome && nomeAtual && snapshotNome!==nomeAtual){
+          console.warn('ai_context stale: era',snapshotNome,'agora',nomeAtual,'. Limpando Supabase.');
+          S.diag=null; S.salesProfile=null; S.businessStage=null; S.maturityRealScore=0;
+          S.contentCalendar={}; S.salesLeads=[]; S.salesGoals=[];
+          // Grava ai_context limpo com snapshot correto
+          await supa.from('company_intelligence').upsert({
+            company_id:company.id,
+            ai_context:{_company_name:company.company_name}
+          },{onConflict:'company_id'});
+          toast('Dados de sessão anterior limpos.','info');
+        }
+      }
+    }catch(e){ console.warn('sanitize ai_context:',e); }
+
+    // Sanitizar diag stale pela matrix (fallback)
+    if(S.diag){
+      const matrixNome=(S.diag?.matrix?.empresa?.nome||'').toLowerCase();
+      const nomeAtual=(company.company_name||'').toLowerCase();
+      if(matrixNome && nomeAtual && matrixNome!==nomeAtual){
+        console.warn('Diag matrix stale. Limpando.');
+        S.diag=null; S.salesProfile=null; S.businessStage=null; S.maturityRealScore=0;
+      }
+    }
+
     save();
     // Re-render everything that has fresh data
     renderDashboard();
-    renderActiveModule(); // Renders whatever module is currently visible
+    renderActiveModule();
     toast('Dados carregados.','success');
   }catch(e){ console.error('hydrateFromSupabase:',e); }
 }
@@ -4144,31 +4181,25 @@ async function getAuthToken(){
 
 async function callAgentGemini(prompt, modulo='geral'){
   try{
-    const token=await getAuthToken();
     const controller=new AbortController();
     const timeoutId=setTimeout(()=>controller.abort(),25000);
     const res=await fetch(`${SUPABASE_URL}/functions/v1/agente-cliente`,{
       signal:controller.signal,
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,'apikey':SUPABASE_ANON_KEY},
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY},
       body:JSON.stringify({prompt,context:buildAgentContext(),modulo})
     });
     clearTimeout(timeoutId);
     if(!res.ok){
       console.error('Edge fn error:',res.status);
-      if(res.status===401) toast('Sessão expirada. Faça login novamente.','error','Autenticação');
       return null;
     }
     const data=await res.json();
     if(data?.acoes?.calendario?.length) S._lastAgentAcoes=data.acoes;
     return data?.response||null;
   }catch(e){
-    if(e.name==='AbortError'){
-      toast('O agente demorou muito para responder. Tente novamente.','error','Timeout');
-      console.error('Gemini timeout');
-    } else {
-      console.error('Gemini:',e.message||e);
-    }
+    if(e.name==='AbortError') console.error('Gemini timeout');
+    else console.error('Gemini:',e.message||e);
     return null;
   }
 }
@@ -4900,6 +4931,7 @@ async function persistToSupabase(){
     await supa.from('company_intelligence').upsert({
       company_id:S.companyId,
       ai_context:{
+        _company_name:S.formData.companyName||'',
         contentCalendar:S.contentCalendar,
         salesGoals:S.salesGoals||[],
         salesLeads:S.salesLeads||[],
