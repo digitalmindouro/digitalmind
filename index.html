@@ -573,7 +573,7 @@ h1 em{font-style:normal;color:var(--primary);}
 .mat-item-label{color:var(--muted);}
 .mat-item-val{font-weight:700;}
 .mat-item-val.earned{color:var(--success);}
-.mat-item-val.zero{color:rgba(255,255,255,.2);}
+.mat-item-val.zero{color:rgba(255,255,255,.2);}.mat-item-val.partial{color:var(--primary);}
 
 
 /* ══ CALENDAR SIDE PANEL ══ */
@@ -1114,6 +1114,7 @@ body{overflow-x:hidden!important;}
   </div>
   <nav class="topnav">
     <button class="topnav-btn active" id="navDiag" style="display:none">Diagnóstico</button>
+    <span id="syncIndicator" style="font-size:.75rem;color:var(--muted);display:none;align-items:center;gap:5px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.03);transition:all .3s"></span>
     <button class="topnav-btn" id="navArea"><span class="conn-dot" id="connDot"></span><span class="navArea-text">Área da Empresa</span></button>
     <button class="topnav-btn mobile-menu-btn hidden" id="mobileMenuBtn" onclick="toggleMobileMenu()" aria-label="Menu">☰</button>
   </nav>
@@ -1611,6 +1612,7 @@ body{overflow-x:hidden!important;}
             <div class="fef fin-entry-form fin-entry-grid" id="receitaForm">
               <div class="fl"><label>Descrição</label><input type="text" id="rDesc" placeholder="Ex.: Venda de serviço"/></div>
               <div class="fl"><label>Valor (R$)</label><input type="number" id="rValor" placeholder="0.00" min="0" step="0.01"/></div>
+              <div class="fl"><label>Data</label><input type="date" id="rData"/></div>
               <div class="fl"><label>Cliente</label><select id="rCliente"><option value="">Selecionar...</option></select></div>
               <div class="fl"><label>Produto/Serviço</label><select id="rProduto"><option value="">Selecionar...</option></select></div>
               <div class="fl" style="grid-column:1/-1">
@@ -1634,6 +1636,7 @@ body{overflow-x:hidden!important;}
             <div class="fef fin-entry-form fin-entry-grid" id="despesaForm">
               <div class="fl"><label>Descrição</label><input type="text" id="dDesc" placeholder="Ex.: Pagamento de aluguel"/></div>
               <div class="fl"><label>Valor (R$)</label><input type="number" id="dValor" placeholder="0.00" min="0" step="0.01"/></div>
+              <div class="fl"><label>Data</label><input type="date" id="dData"/></div>
               <div class="fl"><label>Fornecedor</label><select id="dFornecedor"><option value="">Selecionar...</option></select></div>
               <div class="fl" style="grid-column:1/-1">
                 <label>Categoria</label>
@@ -2027,11 +2030,18 @@ async function persistSales(companyId){
 
 /* ── Salva transação financeira ── */
 async function persistTx(tx){
-  if(!supa||!S.user||!S.companyId) return;
+  if(!supa||!S.user) return false;
+  // Se companyId não existe, tenta criar empresa antes de persistir
+  if(!S.companyId){
+    const cId=await ensureCompany();
+    if(!cId){
+      toast('Não foi possível sincronizar. Verifique sua conexão.','error','Sync');
+      return false;
+    }
+  }
   try{
-    // UPSERT com id local garantindo que desktop e mobile usam o MESMO id
-    await supa.from('financial_transactions').upsert({
-      id:tx.id,  // ← chave: mesmo UUID em local e Supabase
+    const {error}=await supa.from('financial_transactions').upsert({
+      id:tx.id,
       company_id:S.companyId, user_id:S.user.id,
       tipo:tx.tipo, descricao:tx.desc, valor:tx.valor,
       categoria:tx.cat||null,
@@ -2039,8 +2049,19 @@ async function persistTx(tx){
       product_id:tx.produtoId||null,
       data_lancamento:tx.dataISO||new Date().toISOString().split('T')[0]
     },{onConflict:'id'});
+    if(error){
+      console.error('persistTx error:',error.message,'| code:',error.code);
+      toast('Erro ao salvar no servidor: '+error.message,'error','Sync');
+      setSyncStatus('error');
+      return false;
+    }
+    setSyncStatus('ok');
+    return true;
   }catch(e){
-    console.error('persistTx error:', e?.message||e, '| companyId:', S.companyId, '| userId:', S.user?.id);
+    console.error('persistTx exception:',e?.message||e);
+    toast('Erro de conexão ao salvar lançamento.','error','Sync');
+    setSyncStatus('error');
+    return false;
   }
 }
 
@@ -2469,11 +2490,14 @@ function openMetric(type){
     maturidade:{title:'Maturidade Digital',sub:'Score real baseado nas ações completadas no sistema.',content:(()=>{
       const realScore=S.maturityRealScore||calcMaturityScore();
       const breakdown=getMaturityBreakdown();
-      return`<div class="fin-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      const totalMax=breakdown.reduce((a,b)=>a+b.max,0);
+      const faltam=breakdown.filter(b=>b.earned<b.max);
+      const proximaAcao=faltam[0];
+      return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
         <div style="text-align:center;padding:14px;border-radius:14px;background:rgba(75,140,255,.06);border:1px solid rgba(75,140,255,.12)">
           <p style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase">Maturidade Real</p>
           <div class="score-ring" style="--score:${realScore};width:90px;height:90px;margin:0 auto 6px"><span style="font-size:1.1rem">${realScore}%</span></div>
-          <p style="font-size:.74rem;color:var(--muted)">Baseado em ações reais</p>
+          <p style="font-size:.74rem;color:var(--muted)">${realScore} de ${totalMax} pontos</p>
         </div>
         <div style="text-align:center;padding:14px;border-radius:14px;background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.12)">
           <p style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase">Score do Diagnóstico</p>
@@ -2481,7 +2505,20 @@ function openMetric(type){
           <p style="font-size:.74rem;color:var(--muted)">Baseado nas respostas</p>
         </div>
       </div>
-      <div class="maturity-breakdown">${breakdown.map(b=>`<div class="mat-item"><span class="mat-item-label">${b.label}</span><span class="mat-item-val ${b.earned>0?'earned':'zero'}">${b.earned>0?'+'+b.earned:'—'} / ${b.max}</span></div>`).join('')}</div>`;
+      ${proximaAcao?`<div style="margin-bottom:14px;padding:12px 15px;border-radius:13px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2)">
+        <p style="font-size:.72rem;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">⚡ Próxima ação para subir o score</p>
+        <p style="font-size:.88rem;color:var(--text)"><strong>${proximaAcao.label}</strong> — vale até +${proximaAcao.max-proximaAcao.earned} pontos</p>
+      </div>`:''}
+      <div class="maturity-breakdown">${breakdown.map(b=>{
+        const pct=b.max>0?Math.round((b.earned/b.max)*100):0;
+        return`<div class="mat-item">
+          <span class="mat-item-label">${b.label}</span>
+          <div style="flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin:0 10px">
+            <div style="height:100%;width:${pct}%;background:${b.earned===b.max?'var(--success)':b.earned>0?'var(--primary)':'rgba(255,255,255,.1)'};border-radius:999px;transition:width .4s"></div>
+          </div>
+          <span class="mat-item-val ${b.earned>=b.max?'earned':b.earned>0?'partial':'zero'}">${b.earned>0?'+'+b.earned:'—'} / ${b.max}</span>
+        </div>`;
+      }).join('')}</div>`;
     })()},
     prioridades:{title:'Prioridades Identificadas',sub:'Clique em qualquer prioridade para ver recomendações detalhadas.',content:`<div style="display:flex;flex-direction:column;gap:10px">${d.priorities.map(p=>{const pd=PRIORITY_DATA[p]||{icon:'📌',desc:'',recs:[]};return`<div style="padding:14px;border-radius:14px;background:rgba(75,140,255,.06);border:1px solid rgba(75,140,255,.16)"><strong>${pd.icon} ${p}</strong><p style="font-size:.84rem;color:var(--muted);margin-top:6px;line-height:1.55">${pd.desc}</p></div>`;}).join('')}</div>`},
     modulos:{title:'Módulos Ativos',sub:'4 módulos disponíveis na Área da Empresa.',content:`<div style="display:flex;flex-direction:column;gap:9px">${[{icon:'🎯',n:'Marketing',d:'Agente com contexto real do diagnóstico.'},{icon:'🛒',n:'Vendas',d:'Diagnóstico passo a passo + agente comercial.'},{icon:'💰',n:'Financeiro',d:'Lançamentos, gráficos, clientes, produtos e conciliação.'},{icon:'📈',n:'Evolução',d:'Score, histórico por período e metas de avanço.'}].map(m=>`<div style="display:flex;gap:11px;padding:12px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid var(--border)"><span style="font-size:1.3rem">${m.icon}</span><div><strong>${m.n}</strong><p style="font-size:.82rem;color:var(--muted)">${m.d}</p></div></div>`).join('')}</div>`},
@@ -2531,11 +2568,15 @@ function switchFinTab(id){
   document.querySelectorAll('.fin-tab').forEach(t=>t.classList.toggle('active',t.dataset.ftab===id));
   document.querySelectorAll('.fin-panel').forEach(p=>p.classList.toggle('active',p.id===`ftab-${id}`));
   if(id==='overview') renderFinOverview();
-  if(id==='receitas') renderTxList('receita');
-  if(id==='despesas') renderTxList('despesa');
+  if(id==='receitas'){renderTxList('receita'); initDateField('rData');}
+  if(id==='despesas'){renderTxList('despesa'); initDateField('dData');}
   if(id==='clientes') renderContacts();
   if(id==='produtos') renderProducts();
   refreshCatLists();
+}
+function initDateField(id){
+  const el=$(id); if(!el) return;
+  if(!el.value) el.value=new Date().toISOString().split('T')[0];
 }
 
 function refreshCatLists(){
@@ -2573,10 +2614,12 @@ async function addTx(tipo){
   const clienteId=tipo==='receita'?($('rCliente').value||null):null;
   const fornecedorId=tipo==='despesa'?($('dFornecedor').value||null):null;
   const produtoId=tipo==='receita'?($('rProduto')?.value||null):null;
-  const now=new Date();
-  const dataISO=now.toISOString().split('T')[0];
-  const data=`${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
-  const tx={id:uuid(),tipo,desc,valor,cat,clienteId,fornecedorId,produtoId,data,dataISO};
+  // Usa data do campo se disponível, senão hoje
+  const dateField=$(tipo==='receita'?'rData':'dData');
+  const dataISO=dateField?.value||new Date().toISOString().split('T')[0];
+  const dateParts=dataISO.split('-');
+  const data=dateParts.length===3?`${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`:new Date().toLocaleDateString('pt-BR');
+  const tx={id:uuid(),tipo,desc,valor:Math.round(valor*100)/100,cat,clienteId,fornecedorId,produtoId,data,dataISO};
   // Garante companyId ANTES de qualquer operação
   if(supa&&S.user&&!S.companyId){
     await ensureCompany();
@@ -2588,10 +2631,9 @@ async function addTx(tipo){
     if(supa&&S.user) persistCategory(cat,tipo);
   }
   // Persiste no Supabase de forma imediata e confiável
-  if(supa&&S.user&&S.companyId){
-    await persistTx(tx);
-    // Atualiza ai_context com a lista atual
-    autoSaveCalendar();
+  if(supa&&S.user){
+    const ok=await persistTx(tx);
+    if(ok) autoSaveCalendar();
   }
   renderFinOverview(); renderTxList(tipo); refreshCatLists();
   $(tipo==='receita'?'rDesc':'dDesc').value='';
@@ -3131,10 +3173,51 @@ function renderActiveModule(){
   if(S.activeMod==='vendas'){renderSalesGoals();renderCrmBoard();}
   if(S.activeMod==='evolucao'){renderStages();renderEvo();}
   if(S.activeMod==='evolucao') renderEvo();
-  if(S.activeMod==='marketing'){renderMktProgressCards();renderCalendar();}
+  if(S.activeMod==='marketing'){
+    renderMktProgressCards();renderCalendar();
+    const mktBox=document.getElementById('mktChat');
+    if(mktBox&&mktBox.children.length===0) initMktGreeting();
+  }
 }
 
 /* ═══════════════ CHAT ═══════════════ */
+function initMktGreeting(){
+  const box=document.getElementById('mktChat');
+  if(!box) return;
+  const nome=S.formData.companyName||null;
+  const txns=S.financial.transactions||[];
+  const leads=S.salesLeads||[];
+  const agendados=Object.values(S.contentCalendar).flat().length;
+  const leadsParados=(leads).filter(l=>{
+    if(!l.lastContact||l.stage==='fechado'||l.stage==='perdido') return false;
+    return (new Date()-new Date(l.lastContact+'T00:00:00'))/(1000*60*60*24)>14;
+  }).length;
+  const rec=txns.filter(t=>t.tipo==='receita').reduce((a,t)=>a+t.valor,0);
+  const dep=txns.filter(t=>t.tipo==='despesa').reduce((a,t)=>a+t.valor,0);
+  const saldo=rec-dep;
+
+  // Monta greeting com dados reais
+  let msg='';
+  if(!S.diag){
+    msg='Olá! Para começar a te orientar com precisão, complete o **diagnóstico estratégico** primeiro. Ele é a base de tudo — sem ele não consigo personalizar as recomendações para o seu negócio.';
+  } else {
+    const partes=[];
+    if(nome) partes.push(`Olá! Aqui está o panorama atual de **${nome}**:`);
+    else partes.push('Olá! Aqui está o panorama atual:');
+    if(leadsParados>0) partes.push(`⚠️ **${leadsParados} lead${leadsParados>1?'s estão':'está'} parado${leadsParados>1?'s':''}** sem contato há mais de 14 dias — isso é receita esfriando.`);
+    if(agendados===0) partes.push('📅 **Calendário de conteúdo vazio** — sem consistência de publicação é difícil gerar demanda nova.');
+    if(txns.length===0) partes.push('💰 **Nenhum lançamento financeiro** — sem dados financeiros não consigo calcular sua margem real.');
+    else if(saldo<0) partes.push(`💸 **Saldo negativo de R$ ${Math.abs(saldo).toLocaleString('pt-BR',{minimumFractionDigits:2})}** — despesas estão superando receitas.`);
+    if(partes.length===1) partes.push('✅ Tudo parece no caminho certo. Me diga onde quer aprofundar: marketing, vendas ou financeiro?');
+    else partes.push('
+O que quer atacar primeiro?');
+    msg=partes.join('
+
+');
+  }
+  addMsg(box, msg, 'ai');
+}
+
 function addMsg(box,text,role='ai'){
   const d=document.createElement('div'); d.className=`msg ${role}`;
   if(role==='ai'){
@@ -4004,27 +4087,44 @@ function buildAgentContext(){
     }
   };
 }
+// Sempre busca o token mais recente — evita falha silenciosa por token expirado
+async function getAuthToken(){
+  try{
+    if(supa){
+      const {data}=await supa.auth.getSession();
+      if(data?.session?.access_token) return data.session.access_token;
+    }
+  }catch(e){ console.warn('getAuthToken fallback:',e); }
+  return SUPABASE_ANON_KEY;
+}
+
 async function callAgentGemini(prompt, modulo='geral'){
   try{
+    const token=await getAuthToken();
     const controller=new AbortController();
-    const timeoutId=setTimeout(()=>controller.abort(),25000); // 25s timeout
+    const timeoutId=setTimeout(()=>controller.abort(),25000);
     const res=await fetch(`${SUPABASE_URL}/functions/v1/agente-cliente`,{
       signal:controller.signal,
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY},
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,'apikey':SUPABASE_ANON_KEY},
       body:JSON.stringify({prompt,context:buildAgentContext(),modulo})
     });
     clearTimeout(timeoutId);
-    if(!res.ok){console.error('Edge fn error:',res.status);return null;}
-    const data=await res.json();
-    // Store last acoes for user-triggered scheduling (never auto-execute)
-    if(data?.acoes?.calendario?.length){
-      S._lastAgentAcoes=data.acoes;
+    if(!res.ok){
+      console.error('Edge fn error:',res.status);
+      if(res.status===401) toast('Sessão expirada. Faça login novamente.','error','Autenticação');
+      return null;
     }
+    const data=await res.json();
+    if(data?.acoes?.calendario?.length) S._lastAgentAcoes=data.acoes;
     return data?.response||null;
   }catch(e){
-    if(e.name==='AbortError') console.error('Gemini timeout');
-    else console.error('Gemini:',e.message||e);
+    if(e.name==='AbortError'){
+      toast('O agente demorou muito para responder. Tente novamente.','error','Timeout');
+      console.error('Gemini timeout');
+    } else {
+      console.error('Gemini:',e.message||e);
+    }
     return null;
   }
 }
@@ -4799,7 +4899,14 @@ async function loadFromSupabase(){
       if(ctx.products?.length) S.products=ctx.products;
       if(ctx.categories?.receita?.length) S.categories=ctx.categories;
       if(ctx.salesAnswers?.length) S.salesAnswers=ctx.salesAnswers;
-      if(ctx.formData?.companyName) S.formData={...S.formData,...ctx.formData};
+      if(ctx.formData){
+        // Dados da tabela companies têm prioridade absoluta sobre ai_context
+        // Preserva os campos que hydrateFromSupabase já carregou da tabela
+        const tableFields=['companyName','city','segment','marketTime','salesModel','mainGoal','mainDifficulty'];
+        const tableValues={};
+        tableFields.forEach(f=>{ if(S.formData[f]) tableValues[f]=S.formData[f]; });
+        S.formData={...S.formData,...ctx.formData,...tableValues};
+      }
       if(ctx.diag) S.diag=ctx.diag;
       if(ctx.salesProfile) S.salesProfile=ctx.salesProfile;
       // NOTE: transactions are NOT restored from ai_context
@@ -4811,12 +4918,34 @@ async function loadFromSupabase(){
 }
 const loadCalendarFromSupabase=loadFromSupabase;
 
+// Indicador visual de sincronização com Supabase
+function setSyncStatus(status){
+  const el=document.getElementById('syncIndicator');
+  if(!el||!S.isLogged) return;
+  el.style.display='flex';
+  if(status==='saving'){
+    el.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:var(--warning);display:inline-block"></span> Salvando...';
+    el.style.borderColor='rgba(245,158,11,.2)';
+  } else if(status==='ok'){
+    el.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block"></span> Sincronizado';
+    el.style.borderColor='rgba(34,197,94,.2)';
+    setTimeout(()=>{el.style.opacity='0';setTimeout(()=>{el.style.display='none';el.style.opacity='1';},600);},2500);
+  } else if(status==='error'){
+    el.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:var(--danger);display:inline-block"></span> Erro ao salvar';
+    el.style.borderColor='rgba(239,68,68,.2)';
+  }
+}
+
 // Debounced auto-save — triggers after every important action
 let _saveTimer=null;
 function autoSaveCalendar(){
   save(); // immediate local cache
   if(_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer=setTimeout(()=>persistToSupabase(),1500);
+  setSyncStatus('saving');
+  _saveTimer=setTimeout(async()=>{
+    await persistToSupabase();
+    setSyncStatus('ok');
+  },1500);
 }
 // Alias for direct calls
 const autoSave=autoSaveCalendar;
@@ -5240,6 +5369,13 @@ function detectBusinessStage(){
   const calendar = S.contentCalendar || {};
   const totalConteudos = Object.values(calendar).flat().length;
 
+  // Sem dados reais de negócio = sempre estágio 1
+  // Diagnóstico e vendas sozinhos não provam tração — precisam de ação real
+  const hasRealData = txns.length >= 1 || leads.length >= 1;
+  if(!hasRealData){
+    return 1; // Sobrevivência — nenhum dado real ainda
+  }
+
   // Lógica de estágio baseada em capacidade real, não faturamento
   if(score < 25 || !temProcesso && !temFinanceiro){
     return 1; // Sobrevivência
@@ -5469,9 +5605,19 @@ syncBottomNav();
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/sw.js')
-      .then(()=>console.log('SW registered'))
-      .catch(e=>console.warn('SW error:',e));
+    // scope '/' garante que o SW cobre toda a origem
+    // SecurityError ocorre quando o script está em origem diferente — falha silenciosa
+    navigator.serviceWorker.register('/sw.js',{scope:'/'})
+      .then(reg=>{
+        console.log('SW registered, scope:',reg.scope);
+        // Verifica atualização a cada 60s
+        setInterval(()=>reg.update(),60000);
+      })
+      .catch(e=>{
+        // SecurityError é esperado em localhost/preview — não bloqueia o app
+        if(e.name==='SecurityError') console.info('SW: ambiente de preview, PWA desativado.');
+        else console.warn('SW error:',e.name,e.message);
+      });
   });
 }
 </script>
