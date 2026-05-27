@@ -29,7 +29,7 @@ export default function SignupPage() {
 
     // Create company row linked to the new user
     const { error: compErr } = await supa.from('companies').insert({
-      user_id: data.user.id,
+      owner_user_id: data.user.id,
       company_name: companyName,
     })
 

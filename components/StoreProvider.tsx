@@ -24,7 +24,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const { data } = await supa
         .from('companies')
         .select('id')
-        .eq('user_id', session.user.id)
+        .eq('owner_user_id', session.user.id)
         .single()
 
       if (data?.id) setCompanyId(data.id)

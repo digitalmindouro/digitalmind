@@ -6,7 +6,7 @@ export interface Database {
       companies: {
         Row: {
           id: string
-          user_id: string
+          owner_user_id: string
           company_name: string | null
           city: string | null
           segment: string | null
@@ -18,7 +18,7 @@ export interface Database {
           created_at: string
         }
         Insert: {
-          user_id: string
+          owner_user_id: string
           company_name?: string | null
           city?: string | null
           segment?: string | null
@@ -29,7 +29,7 @@ export interface Database {
           status?: string | null
         }
         Update: {
-          user_id?: string
+          owner_user_id?: string
           company_name?: string | null
           city?: string | null
           segment?: string | null
